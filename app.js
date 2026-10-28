@@ -1,1 +1,429 @@
-(()=>{const $=id=>document.getElementById(id);let db=null,user=null,profile=null;const cfg=()=>({url:localStorage.getItem('aipri_url')||'',key:localStorage.getItem('aipri_key')||''});const msg=(id,s)=>$(id).textContent=s||'';const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const client=()=>{const c=cfg();return c.url&&c.key?window.supabase.createClient(c.url,c.key):null};const email=u=>`${u.toLowerCase()}@users.aipri-friendcardbook.invalid`;const valid=u=>/^[a-zA-Z0-9_]{3,20}$/.test(u);const slug=()=>Array.from(crypto.getRandomValues(new Uint8Array(16))).map(x=>x.toString(16).padStart(2,'0')).join('');function settingOpen(){$('settings').classList.remove('hidden');$('notice').classList.add('hidden')}$('openSettings').onclick=settingOpen;$('settingsToggle').onclick=settingOpen;$('closeSettings').onclick=()=>$('settings').classList.add('hidden');$('dismissNotice').onclick=()=>$('notice').classList.add('hidden');document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));$(b.dataset.view).classList.remove('hidden')});let c=cfg();$('url').value=c.url;$('key').value=c.key;$('clear').onclick=()=>{localStorage.removeItem('aipri_url');localStorage.removeItem('aipri_key');db=null;$('url').value='';$('key').value='';msg('status','設定を消去しました');$('dbState').textContent='未接続'};$('save').onclick=async()=>{let url=$('url').value.trim().replace(/\/+$/,''),key=$('key').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url))return msg('status','Project URLを確認してください');if(!key)return msg('status','Publishable keyを入力してください');localStorage.setItem('aipri_url',url);localStorage.setItem('aipri_key',key);db=client();msg('status','接続確認中…');try{let r=await fetch(url+'/auth/v1/health',{headers:{apikey:key}});if(!r.ok)throw Error('HTTP '+r.status);$('dbState').textContent='接続OK';msg('status','接続できました');$('settings').classList.add('hidden');await restore()}catch(e){$('dbState').textContent='要確認';msg('status','接続失敗：'+e.message)}};function authUI(){ $('authPanel').classList.remove('hidden');$('accountPanel').classList.add('hidden');$('cardCount').textContent='0';$('charCount').textContent='0';$('cardList').innerHTML='';$('characterList').innerHTML=''}async function restore(){db=db||client();if(!db)return;let {data,error}=await db.auth.getSession();if(error)return msg('authStatus',error.message);if(data.session){user=data.session.user;await loadProfile()}else authUI();let share=new URLSearchParams(location.search).get('share');if(share)await publicLoad(share)}async function loadProfile(){let {data,error}=await db.from('profiles').select('id,display_name,username,is_public,share_slug').eq('id',user.id).maybeSingle();if(error)return msg('authStatus','プロフィール読み込みエラー：'+error.message);profile=data;if(!profile)return msg('authStatus','プロフィールが見つかりません。SQL設定が必要です');$('authPanel').classList.add('hidden');$('accountPanel').classList.remove('hidden');$('signedInAs').textContent=profile.username||profile.display_name;$('publicToggle').checked=!!profile.is_public;$('shareUrl').value=location.origin+location.pathname+'?share='+encodeURIComponent(profile.share_slug||'');$('shareLinkArea').classList.toggle('hidden',!profile.is_public);$('homeTitle').textContent=(profile.display_name||profile.username)+'さんの図鑑';$('dbState').textContent='ログイン中';await lists()}$('signupBtn').onclick=async()=>{db=db||client();if(!db)return msg('authStatus','先に接続設定を保存してください');let u=$('authUsername').value.trim().toLowerCase(),p=$('authPassword').value;if(!valid(u))return msg('authStatus','IDは英数字と _ の3〜20文字です');if(p.length<8)return msg('authStatus','パスワードは8文字以上です');msg('authStatus','登録中…');let {data,error}=await db.auth.signUp({email:email(u),password:p,options:{data:{username:u}}});if(error)return msg('authStatus','登録失敗：'+error.message);if(!data.session)return msg('authStatus','登録は受け付けられましたが即時ログインできません。Supabaseのメール確認設定を確認してください');user=data.user;let {error:pe}=await db.from('profiles').insert({id:user.id,display_name:u,username:u,is_public:false,share_slug:slug()});if(pe)return msg('authStatus','プロフィール保存失敗：'+pe.message);await loadProfile();msg('authStatus','登録しました')};$('loginBtn').onclick=async()=>{db=db||client();if(!db)return msg('authStatus','先に接続設定を保存してください');let u=$('authUsername').value.trim().toLowerCase(),p=$('authPassword').value;if(!valid(u))return msg('authStatus','IDは英数字と _ の3〜20文字です');let {data,error}=await db.auth.signInWithPassword({email:email(u),password:p});if(error)return msg('authStatus','ログインできません。ID・パスワードを確認してください');user=data.user;await loadProfile()};$('logoutBtn').onclick=async()=>{if(db)await db.auth.signOut();user=null;profile=null;authUI();$('dbState').textContent='未接続'};async function lists(){if(!user)return;let [a,b]=await Promise.all([db.from('cards').select('id,card_name,card_data,created_at').eq('user_id',user.id).order('created_at',{ascending:false}),db.from('my_characters').select('id,character_name,character_data,created_at').eq('user_id',user.id).order('created_at',{ascending:false})]);if(a.error)msg('cardStatus','読み込みエラー：'+a.error.message);if(b.error)msg('characterStatus','読み込みエラー：'+b.error.message);let cards=a.data||[],chars=b.data||[];$('cardCount').textContent=cards.length;$('charCount').textContent=chars.length;$('cardList').innerHTML=cards.length?cards.map(x=>`<article class="item"><div><strong>${esc(x.card_name)}</strong><p>${esc(x.card_data?.memo||'')}</p></div><button class="danger" data-dc="${x.id}">削除</button></article>`).join(''):'<p class="hint">カードはまだありません。</p>';$('characterList').innerHTML=chars.length?chars.map(x=>`<article class="item"><div><strong>${esc(x.character_name)}</strong><p>${esc(x.character_data?.memo||'')}</p></div><button class="danger" data-dm="${x.id}">削除</button></article>`).join(''):'<p class="hint">マイキャラはまだありません。</p>';document.querySelectorAll('[data-dc]').forEach(x=>x.onclick=()=>del('cards',x.dataset.dc,'cardStatus'));document.querySelectorAll('[data-dm]').forEach(x=>x.onclick=()=>del('my_characters',x.dataset.dm,'characterStatus'))}async function del(table,id,status){if(!confirm('削除しますか？'))return;let {error}=await db.from(table).delete().eq('id',id).eq('user_id',user.id);if(error)msg(status,error.message);else await lists()}$('addCardBtn').onclick=async()=>{if(!user)return msg('cardStatus','先にログインしてください');let name=$('cardName').value.trim();if(!name)return msg('cardStatus','カード名を入力してください');let {error}=await db.from('cards').insert({user_id:user.id,card_name:name,card_data:{memo:$('cardMemo').value.trim()}});if(error)return msg('cardStatus','保存失敗：'+error.message);$('cardName').value='';$('cardMemo').value='';msg('cardStatus','保存しました');await lists()};$('addCharacterBtn').onclick=async()=>{if(!user)return msg('characterStatus','先にログインしてください');let name=$('characterName').value.trim();if(!name)return msg('characterStatus','マイキャラ名を入力してください');let {error}=await db.from('my_characters').insert({user_id:user.id,character_name:name,character_data:{memo:$('characterMemo').value.trim()}});if(error)return msg('characterStatus','保存失敗：'+error.message);$('characterName').value='';$('characterMemo').value='';msg('characterStatus','保存しました');await lists()};$('saveShareBtn').onclick=async()=>{if(!user||!profile)return msg('shareStatus','先にログインしてください');let {error}=await db.from('profiles').update({is_public:$('publicToggle').checked}).eq('id',user.id);if(error)return msg('shareStatus','保存失敗：'+error.message);profile.is_public=$('publicToggle').checked;$('shareLinkArea').classList.toggle('hidden',!profile.is_public);msg('shareStatus',profile.is_public?'公開しました':'非公開にしました')};$('copyShareBtn').onclick=async()=>{try{await navigator.clipboard.writeText($('shareUrl').value);msg('shareStatus','URLをコピーしました')}catch(e){$('shareUrl').select();msg('shareStatus','URLを選択しました。長押ししてコピーしてください')}};async function publicLoad(s){db=db||client();if(!db)return;let {data,error}=await db.rpc('get_public_collection',{requested_slug:s});$('publicCollection').classList.remove('hidden');if(error||!data||!data.found){$('publicTitle').textContent='公開図鑑を表示できません';return}$('publicTitle').textContent=(data.display_name||'ユーザー')+'さんの公開図鑑';$('publicCards').innerHTML='<h3>カード</h3>'+(data.cards||[]).map(x=>`<article class="item">${esc(x.card_name)}<p>${esc(x.memo||'')}</p></article>`).join('');$('publicCharacters').innerHTML='<h3>マイキャラ</h3>'+(data.characters||[]).map(x=>`<article class="item">${esc(x.character_name)}<p>${esc(x.memo||'')}</p></article>`).join('')}if(cfg().url&&cfg().key){db=client();$('dbState').textContent='接続設定あり';restore()}else authUI()})();
+
+(() => {
+  const $ = id => document.getElementById(id);
+  const main = document.querySelector('main');
+  const notice = $('notice');
+  const settings = $('settings');
+
+  // Existing navigation and connection settings
+  $('openSettings').onclick = () => {
+    settings.classList.remove('hidden');
+    notice.classList.add('hidden');
+  };
+  $('settingsToggle').onclick = () => {
+    settings.classList.remove('hidden');
+    notice.classList.add('hidden');
+  };
+  $('closeSettings').onclick = () => settings.classList.add('hidden');
+
+  document.querySelectorAll('.tabs button').forEach(button => {
+    button.onclick = () => {
+      document.querySelectorAll('.tabs button').forEach(b =>
+        b.classList.toggle('active', b === button)
+      );
+      document.querySelectorAll('.view').forEach(v =>
+        v.classList.add('hidden')
+      );
+      $(button.dataset.view)?.classList.remove('hidden');
+    };
+  });
+
+  $('url').value = localStorage.getItem('aipri_url') || '';
+  $('key').value = localStorage.getItem('aipri_key') || '';
+
+  $('clear').onclick = () => {
+    localStorage.removeItem('aipri_url');
+    localStorage.removeItem('aipri_key');
+    $('url').value = '';
+    $('key').value = '';
+    $('status').textContent = '設定を消去しました';
+    $('dbState').textContent = '未接続';
+  };
+
+  $('save').onclick = async () => {
+    const url = $('url').value.trim().replace(/\/+$/, '');
+    const key = $('key').value.trim();
+
+    if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) ||
+        (!key.startsWith('sb_publishable_') && !key.startsWith('eyJ'))) {
+      $('status').textContent = 'Project URLとPublishable keyを確認してください。';
+      return;
+    }
+
+    localStorage.setItem('aipri_url', url);
+    localStorage.setItem('aipri_key', key);
+    $('status').textContent = '接続を確認しています…';
+
+    try {
+      const r = await fetch(url + '/auth/v1/health', {
+        headers: { apikey: key },
+        cache: 'no-store'
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      $('dbState').textContent = '接続OK';
+      $('status').textContent = '接続できました。ログイン機能を読み込みます。';
+      settings.classList.add('hidden');
+      notice.classList.add('hidden');
+      await boot();
+    } catch (e) {
+      $('dbState').textContent = '要確認';
+      $('status').textContent = '接続失敗：' + e.message;
+    }
+  };
+
+  // Create app panels while keeping the existing page structure
+  const auth = document.createElement('section');
+  auth.id = 'accountPanel';
+  auth.className = 'panel';
+  auth.innerHTML = `
+    <h2>アカウント</h2>
+    <p>メールアドレスの入力は不要です。</p>
+    <label>ユーザーID
+      <input id="userId" autocomplete="username" maxlength="24"
+        placeholder="半角英数字・_（3〜24文字）">
+    </label>
+    <label>パスワード
+      <input id="userPassword" type="password"
+        autocomplete="current-password" minlength="8"
+        placeholder="8文字以上">
+    </label>
+    <label id="displayNameLabel">表示名
+      <input id="displayName" maxlength="30" placeholder="図鑑に表示する名前">
+    </label>
+    <div class="actions">
+      <button id="signUp">新規登録</button>
+      <button id="signIn" class="secondary">ログイン</button>
+      <button id="signOut" class="secondary hidden">ログアウト</button>
+    </div>
+    <p id="authStatus" role="status"></p>
+  `;
+  main.insertBefore(auth, main.querySelector('.hero'));
+
+  const cardsPanel = $('cards');
+  cardsPanel.innerHTML = `
+    <h2>カード一覧</h2>
+    <div class="panel">
+      <label>カード名
+        <input id="newCardName" maxlength="100" placeholder="カード名を入力">
+      </label>
+      <button id="addCard">カードを登録</button>
+    </div>
+    <div id="cardsList"></div>
+  `;
+
+  const charsPanel = $('characters');
+  charsPanel.innerHTML = `
+    <h2>マイキャラ</h2>
+    <div class="panel">
+      <label>マイキャラ名
+        <input id="newCharName" maxlength="100" placeholder="キャラ名を入力">
+      </label>
+      <button id="addChar">マイキャラを登録</button>
+    </div>
+    <div id="charsList"></div>
+  `;
+
+  const sharePanel = $('share');
+  sharePanel.innerHTML = `
+    <h2>共有設定</h2>
+    <div class="panel">
+      <p>公開を有効にすると、共有用URLを発行できます。</p>
+      <label><input id="publicToggle" type="checkbox"> 図鑑を公開する</label>
+      <button id="savePublic">公開設定を保存</button>
+      <p id="shareUrl"></p>
+      <button id="copyShare" class="secondary">共有URLをコピー</button>
+      <p id="shareStatus" role="status"></p>
+    </div>
+  `;
+
+  let client = null;
+  let currentUser = null;
+  let shareUrl = '';
+
+  const message = (id, text) => {
+    $(id).textContent = text;
+  };
+
+  function usernameEmail(name) {
+    return name.toLowerCase() + '@users.aipri-friendcardbook.invalid';
+  }
+
+  function validUsername(name) {
+    return /^[a-zA-Z0-9_]{3,24}$/.test(name);
+  }
+
+  function randomSlug() {
+    return crypto.randomUUID().replace(/-/g, '');
+  }
+
+  async function boot() {
+    const url = localStorage.getItem('aipri_url');
+    const key = localStorage.getItem('aipri_key');
+    if (!url || !key || !window.supabase) return;
+
+    client = window.supabase.createClient(url, key);
+    const { data } = await client.auth.getSession();
+    currentUser = data.session?.user || null;
+
+    $('signUp').onclick = signUp;
+    $('signIn').onclick = signIn;
+    $('signOut').onclick = signOut;
+    $('addCard').onclick = addCard;
+    $('addChar').onclick = addCharacter;
+    $('savePublic').onclick = savePublic;
+    $('copyShare').onclick = async () => {
+      if (!shareUrl) {
+        message('shareStatus', '先にログインして公開設定を保存してください。');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        message('shareStatus', '共有URLをコピーしました。');
+      } catch {
+        message('shareStatus', shareUrl);
+      }
+    };
+
+    client.auth.onAuthStateChange((_event, session) => {
+      currentUser = session?.user || null;
+      setAccountUI();
+      if (currentUser) loadData();
+    });
+
+    await setAccountUI();
+    if (currentUser) await loadData();
+  }
+
+  async function signUp() {
+    const username = $('userId').value.trim();
+    const password = $('userPassword').value;
+    const displayName = $('displayName').value.trim() || username;
+
+    if (!validUsername(username)) {
+      message('authStatus', 'IDは半角英数字と_で3〜24文字にしてください。');
+      return;
+    }
+    if (password.length < 8) {
+      message('authStatus', 'パスワードは8文字以上にしてください。');
+      return;
+    }
+    if (!client) {
+      message('authStatus', '先に接続設定を保存してください。');
+      return;
+    }
+
+    message('authStatus', '登録しています…');
+    const email = usernameEmail(username);
+    const result = await client.auth.signUp({
+      email,
+      password,
+      options: { data: { username, display_name: displayName } }
+    });
+
+    if (result.error) {
+      message('authStatus', '登録できませんでした：' + result.error.message);
+      return;
+    }
+
+    const user = result.data.user;
+    if (user && result.data.session) {
+      const profile = await client.from('profiles').upsert({
+        id: user.id,
+        username: username.toLowerCase(),
+        display_name: displayName,
+        is_public: false,
+        share_slug: randomSlug()
+      });
+      if (profile.error) {
+        message('authStatus', 'プロフィール保存エラー：' + profile.error.message);
+        return;
+      }
+      currentUser = user;
+      await setAccountUI();
+      await loadData();
+      message('authStatus', '登録しました！');
+    } else {
+      message('authStatus',
+        '登録申請を受け付けました。Supabaseのメール確認設定が有効だと、この方式ではログインできません。管理画面で確認設定を変更してください。');
+    }
+  }
+
+  async function signIn() {
+    const username = $('userId').value.trim();
+    const password = $('userPassword').value;
+    if (!validUsername(username)) {
+      message('authStatus', 'ユーザーIDを確認してください。');
+      return;
+    }
+    const { data, error } = await client.auth.signInWithPassword({
+      email: usernameEmail(username),
+      password
+    });
+    if (error) {
+      message('authStatus', 'ログインできませんでした。ID・パスワードを確認してください。');
+      return;
+    }
+    currentUser = data.user;
+    await setAccountUI();
+    await loadData();
+    message('authStatus', 'ログインしました。');
+  }
+
+  async function signOut() {
+    await client.auth.signOut();
+    currentUser = null;
+    await setAccountUI();
+  }
+
+  async function setAccountUI() {
+    const loggedIn = !!currentUser;
+    $('signUp').classList.toggle('hidden', loggedIn);
+    $('signIn').classList.toggle('hidden', loggedIn);
+    $('signOut').classList.toggle('hidden', !loggedIn);
+    $('displayNameLabel').classList.toggle('hidden', loggedIn);
+    $('userId').disabled = loggedIn;
+    $('userPassword').disabled = loggedIn;
+
+    if (!client) {
+      message('authStatus', '接続設定を保存すると登録・ログインできます。');
+      return;
+    }
+    if (loggedIn) {
+      message('authStatus', 'ログイン中です。');
+      $('dbState').textContent = 'ログイン中';
+    } else {
+      message('authStatus', 'IDとパスワードで登録またはログインしてください。');
+      $('dbState').textContent = '接続OK';
+    }
+  }
+
+  async function addCard() {
+    if (!currentUser) return alert('先にログインしてください。');
+    const name = $('newCardName').value.trim();
+    if (!name) return alert('カード名を入力してください。');
+
+    const { error } = await client.from('cards').insert({
+      user_id: currentUser.id,
+      card_name: name,
+      card_data: {}
+    });
+    if (error) return alert('登録エラー：' + error.message);
+    $('newCardName').value = '';
+    await loadCards();
+  }
+
+  async function addCharacter() {
+    if (!currentUser) return alert('先にログインしてください。');
+    const name = $('newCharName').value.trim();
+    if (!name) return alert('マイキャラ名を入力してください。');
+
+    const { error } = await client.from('my_characters').insert({
+      user_id: currentUser.id,
+      character_name: name,
+      character_data: {}
+    });
+    if (error) return alert('登録エラー：' + error.message);
+    $('newCharName').value = '';
+    await loadCharacters();
+  }
+
+  async function loadCards() {
+    const { data, error } = await client.from('cards')
+      .select('id,card_name,created_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      $('cardsList').textContent = '読み込みエラー：' + error.message;
+      return;
+    }
+    $('cardsList').replaceChildren();
+    for (const card of data || []) {
+      const item = document.createElement('div');
+      item.className = 'panel between';
+      const name = document.createElement('span');
+      name.textContent = card.card_name;
+      const del = document.createElement('button');
+      del.textContent = '削除';
+      del.className = 'secondary';
+      del.onclick = async () => {
+        if (!confirm('「' + card.card_name + '」を削除しますか？')) return;
+        const { error: e } = await client.from('cards').delete().eq('id', card.id);
+        if (e) alert('削除エラー：' + e.message);
+        await loadCards();
+      };
+      item.append(name, del);
+      $('cardsList').append(item);
+    }
+    $('cardCount').textContent = String(data?.length || 0);
+  }
+
+  async function loadCharacters() {
+    const { data, error } = await client.from('my_characters')
+      .select('id,character_name,created_at')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      $('charsList').textContent = '読み込みエラー：' + error.message;
+      return;
+    }
+    $('charsList').replaceChildren();
+    for (const character of data || []) {
+      const item = document.createElement('div');
+      item.className = 'panel between';
+      const name = document.createElement('span');
+      name.textContent = character.character_name;
+      const del = document.createElement('button');
+      del.textContent = '削除';
+      del.className = 'secondary';
+      del.onclick = async () => {
+        if (!confirm('「' + character.character_name + '」を削除しますか？')) return;
+        const { error: e } = await client.from('my_characters')
+          .delete().eq('id', character.id);
+        if (e) alert('削除エラー：' + e.message);
+        await loadCharacters();
+      };
+      item.append(name, del);
+      $('charsList').append(item);
+    }
+    $('charCount').textContent = String(data?.length || 0);
+  }
+
+  async function loadData() {
+    if (!client || !currentUser) return;
+    await Promise.all([loadCards(), loadCharacters(), loadShare()]);
+  }
+
+  async function loadShare() {
+    const { data, error } = await client.from('profiles')
+      .select('is_public,share_slug,display_name')
+      .eq('id', currentUser.id).maybeSingle();
+
+    if (error || !data) {
+      message('shareStatus', 'プロフィールを読み込めませんでした。');
+      return;
+    }
+    $('publicToggle').checked = !!data.is_public;
+    shareUrl = location.origin + location.pathname + '?share=' + data.share_slug;
+    $('shareUrl').textContent = data.is_public ? shareUrl : '現在は非公開です。';
+  }
+
+  async function savePublic() {
+    if (!currentUser) return;
+    const { error } = await client.from('profiles').update({
+      is_public: $('publicToggle').checked
+    }).eq('id', currentUser.id);
+
+    if (error) {
+      message('shareStatus', '保存エラー：' + error.message);
+      return;
+    }
+    await loadShare();
+    message('shareStatus', '公開設定を保存しました。');
+  }
+
+  const url = localStorage.getItem('aipri_url');
+  const key = localStorage.getItem('aipri_key');
+  if (url && key && window.supabase) boot();
+})();
