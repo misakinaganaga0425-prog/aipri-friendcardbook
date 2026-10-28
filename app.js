@@ -531,7 +531,28 @@
     await loadShare();
     message('shareStatus', '公開設定を保存しました。');
   }
+  // ボタンを先に有効にして、エラーを画面に表示する
+  $('signUp').onclick = async () => {
+    message('authStatus', '新規登録ボタンを押しました。処理を開始します…');
+    try {
+      await boot();
+      await signUp();
+    } catch (error) {
+      console.error(error);
+      message('authStatus', 'エラー：' + (error.message || error));
+    }
+  };
 
+  $('signIn').onclick = async () => {
+    message('authStatus', 'ログインボタンを押しました。処理を開始します…');
+    try {
+      await boot();
+      await signIn();
+    } catch (error) {
+      console.error(error);
+      message('authStatus', 'エラー：' + (error.message || error));
+    }
+  };
   // 保存済み設定がある場合は自動接続
   const savedUrl = localStorage.getItem('aipri_url');
   const savedKey = localStorage.getItem('aipri_key');
