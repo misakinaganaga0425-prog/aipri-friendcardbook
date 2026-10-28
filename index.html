@@ -54,8 +54,10 @@
     <div id="characterChips" class="characterChips" aria-label="マイキャラで絞り込み"></div>
     <div class="subTabs"><button id="searchTab" class="active">フレカ検索</button><button id="registerTab">フレカ登録</button></div>
     <section id="cardSearchPanel" class="panel">
-      <label>キーワード検索<input id="cardSearch" type="search" placeholder="コーデ名・色・姿・ブランドなど"></label>
-      <p class="hint">コーデ名、色、マイキャラ名、姿、ブランド、メモから検索できます。</p>
+      <label>キーワード検索<input id="cardSearch" type="search" placeholder="コーデ名・色・マイキャラ・姿・ブランド・メモ" autocomplete="off"></label>
+      <label>マイキャラの姿で絞り込む<input id="appearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
+      <label>ブランドで絞り込む<input id="brandFilter" type="search" placeholder="ブランド名" autocomplete="off"></label>
+      <p class="hint">入力した条件に一致するフレカを表示します。マイキャラ名は上の横並びボタンから選べます。</p>
       <div id="cardsList" class="itemList"><p class="muted">ログインするとフレカを表示できます。</p></div>
     </section>
     <section id="cardRegisterPanel" class="panel hidden">
@@ -64,6 +66,7 @@
       <label>コーデ名 <span class="required">必須</span><input id="newCardName" maxlength="100" placeholder="例：オーロラキスコーデ"></label>
       <label>色<input id="cardColor" maxlength="80" placeholder="例：水色、白"></label>
       <label>マイキャラ<select id="cardCharacter"><option value="">マイキャラを選択（任意）</option></select></label>
+      <label>マイキャラをこの場で新規登録（任意）<input id="newCharacterInline" maxlength="100" placeholder="未登録のマイキャラ名"></label>
       <label>マイキャラの姿<input id="cardAppearance" maxlength="100" placeholder="例：通常、ツインテール、ボブ"></label>
       <label>ブランド<input id="cardBrand" maxlength="100" placeholder="例：エンジェリーシュガー"></label>
       <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存</span></label>
@@ -218,13 +221,20 @@
   }
   async function addCard() {
     if (!currentUser) return message('cardRegisterStatus','先にホームでログインしてください。');
-    const name = $('newCardName').value.trim(), characterId = $('cardCharacter').value || null;
+    const name = $('newCardName').value.trim();
+    const inlineCharacterName = $('newCharacterInline').value.trim();
+    let characterId = $('cardCharacter').value || null;
     const photo = $('cardPhoto').files[0] || null, qr = $('cardQr').files[0] || null;
     if (!name) return message('cardRegisterStatus','コーデ名を入力してください。');
     if (!validImage(photo,'写真') || !validImage(qr,'QRコード画像')) return;
     message('cardRegisterStatus','フレカを登録しています…'); $('addCard').disabled = true;
     let insertedCard = null;
     try {
+      if (inlineCharacterName) {
+        const {data:newCharacter,error:charError}=await client.from('my_characters').insert({user_id:currentUser.id,character_name:inlineCharacterName,character_data:{memo:''}}).select('id,character_name,character_data,created_at').single();
+        if (charError) throw new Error('マイキャラ登録エラー：'+charError.message);
+        characters.unshift(newCharacter); characterId=newCharacter.id;
+      }
       const {data,error} = await client.from('cards').insert({user_id:currentUser.id,card_name:name,card_data:getCardDataFields(),character_id:characterId}).select('id').single();
       if (error) throw error; insertedCard = data;
       const photoPath = await uploadCardImage(insertedCard.id, photo, 'outfit-photo');
@@ -233,7 +243,7 @@
         const {error:updateError} = await client.from('cards').update({card_data:{...getCardDataFields(), photo_path:photoPath, qr_path:qrPath}}).eq('id',insertedCard.id).eq('user_id',currentUser.id);
         if (updateError) throw updateError;
       }
-      ['newCardName','cardColor','cardAppearance','cardBrand','cardMemo','cardPhoto','cardQr'].forEach(id=>{ if ($(id)) $(id).value=''; }); $('cardCharacter').value='';
+      ['newCardName','cardColor','newCharacterInline','cardAppearance','cardBrand','cardMemo','cardPhoto','cardQr'].forEach(id=>{ if ($(id)) $(id).value=''; }); $('cardCharacter').value='';
       message('cardRegisterStatus','フレカを登録しました！'); await loadCards(); showCardTab('search');
     } catch(error) {
       message('cardRegisterStatus','登録中にエラー：'+error.message + (insertedCard ? ' カード情報が登録済みの場合があります。一覧を確認してください。' : ''));
@@ -285,10 +295,15 @@
     const list=$('cardsList'); if(!list)return; list.replaceChildren();
     if(!currentUser){appendText(list,'p','ログインするとフレカを表示できます。','muted');return;}
     const keyword=($('cardSearch')?.value||'').trim().toLocaleLowerCase();
+    const appearanceFilter=($('appearanceFilter')?.value||'').trim().toLocaleLowerCase();
+    const brandFilter=($('brandFilter')?.value||'').trim().toLocaleLowerCase();
     const filtered=cards.filter(card=>{
       const d=card.card_data||{}, character=characters.find(c=>c.id===card.character_id), characterName=character?.character_name||'';
       const fields=[card.card_name,d.color,d.appearance,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
-      return fields.some(x=>x.includes(keyword)) && (activeCharacter==='all'||card.character_id===activeCharacter);
+      const matchesKeyword=!keyword || fields.some(x=>x.includes(keyword));
+      const matchesAppearance=!appearanceFilter || String(d.appearance||'').toLocaleLowerCase().includes(appearanceFilter);
+      const matchesBrand=!brandFilter || String(d.brand||'').toLocaleLowerCase().includes(brandFilter);
+      return matchesKeyword && matchesAppearance && matchesBrand && (activeCharacter==='all'||card.character_id===activeCharacter);
     });
     if(!filtered.length){appendText(list,'p',cards.length?'条件に合うフレカがありません。':'フレカはまだ登録されていません。','muted');return;}
     filtered.forEach(card=>{
@@ -358,6 +373,8 @@
   $('addChar')?.addEventListener('click',()=>runSafely(addCharacter));
   $('savePublic')?.addEventListener('click',()=>runSafely(savePublic));
   $('cardSearch')?.addEventListener('input',renderCards);
+  $('appearanceFilter')?.addEventListener('input',renderCards);
+  $('brandFilter')?.addEventListener('input',renderCards);
   $('copyShare')?.addEventListener('click',async()=>{
     if(!shareUrl)return message('shareStatus','共有URLがありません。プロフィール設定を確認してください。');
     try{await navigator.clipboard.writeText(shareUrl);message('shareStatus','共有URLをコピーしました。');}catch{message('shareStatus',shareUrl);}
