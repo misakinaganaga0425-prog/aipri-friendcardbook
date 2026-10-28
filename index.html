@@ -1,12 +1,252 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#eaf8ff"><title>アイプリ フレンドカード図鑑</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><header><div class="logo">✧</div><div><small>MY FRIEND CARD COLLECTION</small><h1>アイプリ フレンドカード図鑑</h1></div><button id="settingsToggle">⚙</button></header><main>
-<section id="notice" class="panel"><b>最初に接続設定を確認</b><p>Supabaseの設定が済んでいる場合は、ログインへ進めます。</p><button id="openSettings">接続設定</button><button id="dismissNotice" class="secondary">閉じる</button></section>
-<section id="settings" class="panel hidden"><div class="between"><h2>接続設定</h2><button id="closeSettings" class="secondary">閉じる</button></div><label>Project URL<input id="url" placeholder="https://xxxx.supabase.co"></label><label>Publishable key<input id="key" type="password" placeholder="sb_publishable_..."></label><p class="hint">Secret / service_role keyは入力しないでください。</p><button id="save">保存して接続確認</button><button id="clear" class="secondary">消去</button><p id="status"></p></section>
-<section id="authPanel" class="panel"><h2>ログイン / 新規登録</h2><p class="hint">IDは英数字と _ の3〜20文字、パスワードは8文字以上です。メールアドレスは入力しません。</p><label>ユーザーID<input id="authUsername" autocomplete="username" maxlength="20"></label><label>パスワード<input id="authPassword" type="password" autocomplete="current-password"></label><button id="loginBtn">ログイン</button><button id="signupBtn">新規登録</button><p id="authStatus"></p></section>
-<section id="accountPanel" class="panel hidden"><div class="between"><div><small>ログイン中</small><h2 id="signedInAs"></h2></div><button id="logoutBtn" class="secondary">ログアウト</button></div></section>
-<section class="hero"><span class="pill">MY COLLECTION</span><h2>大切なフレンドカードを<br>かわいくまとめよう。</h2><p>マイキャラごとにカードを整理して、共有できる図鑑に。</p></section>
-<nav class="tabs"><button class="active" data-view="home">⌂<small>ホーム</small></button><button data-view="cards">▦<small>カード一覧</small></button><button data-view="characters">☆<small>マイキャラ</small></button><button data-view="share">↗<small>共有</small></button></nav>
-<section id="home" class="view"><h2>コレクション</h2><div class="stats"><article><small>登録カード</small><strong id="cardCount">0</strong></article><article><small>マイキャラ</small><strong id="charCount">0</strong></article><article><small>接続状態</small><strong id="dbState">未接続</strong></article></div><div class="panel center"><div class="heart">♡</div><h3 id="homeTitle">ログインして図鑑を使おう</h3><p id="homeMessage">カードとマイキャラを登録できます。</p></div></section>
-<section id="cards" class="view hidden"><h2>カード一覧</h2><div class="panel"><h3>カードを登録</h3><label>カード名<input id="cardName" maxlength="100"></label><label>メモ（任意）<input id="cardMemo" maxlength="300"></label><button id="addCardBtn">カードを追加</button><p id="cardStatus"></p></div><div id="cardList" class="itemList"></div></section>
-<section id="characters" class="view hidden"><h2>マイキャラ</h2><div class="panel"><h3>マイキャラを登録</h3><label>マイキャラ名<input id="characterName" maxlength="100"></label><label>メモ（任意）<input id="characterMemo" maxlength="300"></label><button id="addCharacterBtn">マイキャラを追加</button><p id="characterStatus"></p></div><div id="characterList" class="itemList"></div></section>
-<section id="share" class="view hidden"><h2>公開・共有設定</h2><div class="panel"><p>公開するとカード名・メモ・マイキャラ名・メモが共有されます。個人情報は登録しないでください。</p><label class="switchrow"><input type="checkbox" id="publicToggle"> 図鑑を公開する</label><button id="saveShareBtn">公開設定を保存</button><p id="shareStatus"></p><div id="shareLinkArea" class="hidden"><label>共有URL<input id="shareUrl" readonly></label><button id="copyShareBtn">URLをコピー</button></div></div><div id="publicCollection" class="panel hidden"><h3 id="publicTitle">公開図鑑</h3><div id="publicCards"></div><div id="publicCharacters"></div></div></section>
-</main><footer>アイプリ フレンドカード図鑑 ♡</footer><script src="app.js"></script></body></html>
+
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eaf8ff">
+  <meta name="description" content="マイキャラごとにフレンドカードを整理できる図鑑">
+  <title>アイプリ フレンドカード図鑑</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header>
+    <div class="logo">✧</div>
+    <div class="header-title">
+      <small>MY FRIEND CARD COLLECTION</small>
+      <h1>アイプリ フレンドカード図鑑</h1>
+    </div>
+    <button id="settingsToggle" type="button" aria-label="接続設定">⚙</button>
+  </header>
+
+  <main>
+    <section id="notice" class="panel">
+      <b>最初に接続設定を確認</b>
+      <p>Supabaseの設定が済んでいる場合は、ログインへ進めます。</p>
+      <button id="openSettings" type="button">接続設定</button>
+      <button id="dismissNotice" type="button" class="secondary">閉じる</button>
+    </section>
+
+    <section id="settings" class="panel hidden">
+      <div class="between">
+        <h2>接続設定</h2>
+        <button id="closeSettings" type="button" class="secondary">閉じる</button>
+      </div>
+
+      <label for="url">Project URL
+        <input id="url" type="url" placeholder="https://xxxx.supabase.co" autocomplete="url">
+      </label>
+
+      <label for="key">Publishable key
+        <input id="key" type="password" placeholder="sb_publishable_..." autocomplete="off">
+      </label>
+
+      <p class="hint">Secret / service_role keyは入力しないでください。</p>
+      <button id="save" type="button">保存して接続確認</button>
+      <button id="clear" type="button" class="secondary">接続設定を消去</button>
+      <p id="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="authPanel" class="panel">
+      <h2>ログイン / 新規登録</h2>
+      <p class="hint">ユーザーIDは半角英数字と _ の3〜20文字、パスワードは8文字以上です。</p>
+
+      <label for="authUsername">ユーザーID
+        <input id="authUsername" autocomplete="username" maxlength="20">
+      </label>
+
+      <label for="authPassword">パスワード
+        <input id="authPassword" type="password" autocomplete="current-password" maxlength="128">
+      </label>
+
+      <button id="loginBtn" type="button">ログイン</button>
+      <button id="signupBtn" type="button">新規登録</button>
+      <p id="authStatus" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="hero">
+      <span class="pill">MY COLLECTION</span>
+      <h2>大切なフレンドカードを<br>かわいくまとめよう。</h2>
+      <p>マイキャラごとにフレカを整理して、自分だけの図鑑に。</p>
+    </section>
+
+    <nav class="tabs" aria-label="メインメニュー">
+      <button class="active" type="button" data-view="home">
+        <span aria-hidden="true">⌂</span>
+        <small>ホーム</small>
+      </button>
+      <button type="button" data-view="cards">
+        <span aria-hidden="true">▦</span>
+        <small>フレカ</small>
+      </button>
+      <button type="button" data-view="characters">
+        <span aria-hidden="true">☆</span>
+        <small>マイキャラ</small>
+      </button>
+      <button type="button" data-view="share">
+        <span aria-hidden="true">↗</span>
+        <small>共有</small>
+      </button>
+    </nav>
+
+    <section id="home" class="view">
+      <h2>コレクション</h2>
+
+      <div class="stats">
+        <article>
+          <small>登録フレカ</small>
+          <strong id="cardCount">0</strong>
+        </article>
+        <article>
+          <small>マイキャラ</small>
+          <strong id="charCount">0</strong>
+        </article>
+        <article>
+          <small>接続状態</small>
+          <strong id="dbState">未接続</strong>
+        </article>
+      </div>
+
+      <div class="panel center">
+        <div class="heart" aria-hidden="true">♡</div>
+        <h3 id="homeTitle">ログインして図鑑を使おう</h3>
+        <p id="homeMessage">フレカとマイキャラを登録できます。</p>
+      </div>
+    </section>
+
+    <section id="cards" class="view hidden">
+      <h2>フレカ</h2>
+
+      <div class="subtabs" role="tablist" aria-label="フレカメニュー">
+        <button
+          id="searchTab"
+          type="button"
+          class="active"
+          role="tab"
+          aria-selected="true"
+          aria-controls="cardSearchPanel"
+        >フレカ検索</button>
+
+        <button
+          id="registerTab"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="cardRegisterPanel"
+        >フレカ登録</button>
+      </div>
+
+      <section id="cardSearchPanel" class="panel" role="tabpanel" aria-labelledby="searchTab">
+        <h3>フレカ検索</h3>
+
+        <label for="cardSearch">キーワード検索
+          <input
+            id="cardSearch"
+            type="search"
+            placeholder="フレカ名・メモ・マイキャラ名"
+            autocomplete="off"
+          >
+        </label>
+
+        <label for="characterFilter">マイキャラで絞り込む
+          <select id="characterFilter">
+            <option value="all">すべて</option>
+          </select>
+        </label>
+
+        <div class="between">
+          <h3>フレカ一覧</h3>
+          <span class="hint">登録順</span>
+        </div>
+
+        <div id="cardsList" class="itemList"></div>
+        <p id="cardStatus" role="status" aria-live="polite"></p>
+      </section>
+
+      <section
+        id="cardRegisterPanel"
+        class="panel hidden"
+        role="tabpanel"
+        aria-labelledby="registerTab"
+      >
+        <h3>フレカ登録</h3>
+
+        <label for="newCardName">フレカ名
+          <input
+            id="newCardName"
+            maxlength="100"
+            placeholder="フレカの名前を入力"
+          >
+        </label>
+
+        <label for="cardCharacter">マイキャラ
+          <select id="cardCharacter">
+            <option value="">マイキャラを選択（任意）</option>
+          </select>
+        </label>
+
+        <label for="cardMemo">メモ（任意）
+          <input id="cardMemo" maxlength="300" placeholder="カードのメモ">
+        </label>
+
+        <button id="addCard" type="button">フレカを登録</button>
+        <p id="cardRegisterStatus" role="status" aria-live="polite"></p>
+      </section>
+    </section>
+
+    <section id="characters" class="view hidden">
+      <h2>マイキャラ</h2>
+
+      <section class="panel">
+        <h3>マイキャラを登録</h3>
+
+        <label for="newCharName">マイキャラ名
+          <input id="newCharName" maxlength="100" placeholder="マイキャラ名を入力">
+        </label>
+
+        <label for="characterMemo">メモ（任意）
+          <input id="characterMemo" maxlength="300" placeholder="マイキャラのメモ">
+        </label>
+
+        <button id="addChar" type="button">マイキャラを追加</button>
+        <p id="characterStatus" role="status" aria-live="polite"></p>
+      </section>
+
+      <div id="charsList" class="itemList"></div>
+    </section>
+
+    <section id="share" class="view hidden">
+      <h2>公開・共有設定</h2>
+
+      <section class="panel">
+        <p>公開設定を変更する前に、共有される情報を確認してください。</p>
+
+        <label class="switchrow" for="publicToggle">
+          <input type="checkbox" id="publicToggle">
+          図鑑を公開する
+        </label>
+
+        <button id="savePublic" type="button">公開設定を保存</button>
+        <p id="shareStatus" role="status" aria-live="polite"></p>
+
+        <div id="shareLinkArea" class="hidden">
+          <label for="shareUrl">共有URL
+            <input id="shareUrl" readonly>
+          </label>
+          <button id="copyShare" type="button">URLをコピー</button>
+        </div>
+      </section>
+
+      <section id="publicCollection" class="panel hidden">
+        <h3 id="publicTitle">公開図鑑</h3>
+        <div id="publicCards"></div>
+        <div id="publicCharacters"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer>アイプリ フレンドカード図鑑 ♡</footer>
+  <script src="app.js"></script>
+</body>
+</html>
