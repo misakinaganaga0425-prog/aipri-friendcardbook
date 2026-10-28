@@ -425,5 +425,13 @@
 
   const url = localStorage.getItem('aipri_url');
   const key = localStorage.getItem('aipri_key');
-  if (url && key && window.supabase) boot();
+  if (url && key) {
+    boot().catch(error => {
+      console.error(error);
+      const status = $('authStatus');
+      if (status) {
+        status.textContent = '初期化エラー：' + error.message;
+      }
+    });
+  }
 })();
