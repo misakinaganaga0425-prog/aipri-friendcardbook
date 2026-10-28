@@ -1,3 +1,4 @@
+
 (() => {
   'use strict';
 
@@ -26,12 +27,6 @@
 
   const validUsername = name => /^[a-zA-Z0-9_]{3,20}$/.test(name);
 
-  const randomSlug = () => {
-    if (crypto.randomUUID) return crypto.randomUUID().replace(/-/g, '');
-    return Array.from(crypto.getRandomValues(new Uint8Array(16)))
-      .map(n => n.toString(16).padStart(2, '0')).join('');
-  };
-
   function showView(viewName) {
     document.querySelectorAll('.view').forEach(view => {
       view.classList.toggle('hidden', view.id !== viewName);
@@ -42,7 +37,6 @@
     window.scrollTo({ top: 0, behavior: 'auto' });
   }
 
-  // 既存HTMLのログイン画面をホーム内へ移動し、重複作成を防ぐ
   const authPanel = $('authPanel');
   if (authPanel && $('home') && authPanel.parentElement !== $('home')) {
     $('home').prepend(authPanel);
@@ -50,16 +44,13 @@
   authPanel?.classList.remove('hidden');
   $('accountPanel')?.remove();
 
-  // 設定画面
   $('openSettings')?.addEventListener('click', () => {
     settings.classList.remove('hidden');
     notice?.classList.add('hidden');
-    window.scrollTo({ top: 0, behavior: 'auto' });
   });
   $('settingsToggle')?.addEventListener('click', () => {
     settings.classList.remove('hidden');
     notice?.classList.add('hidden');
-    window.scrollTo({ top: 0, behavior: 'auto' });
   });
   $('closeSettings')?.addEventListener('click', () => settings.classList.add('hidden'));
   $('dismissNotice')?.addEventListener('click', () => notice?.classList.add('hidden'));
@@ -68,7 +59,6 @@
     button.addEventListener('click', () => showView(button.dataset.view));
   });
 
-  // HTMLにある要素を利用し、IDをJavaScript側で必要な名前にそろえる
   if ($('authUsername')) $('authUsername').id = 'userId';
   if ($('authPassword')) $('authPassword').id = 'userPassword';
   if ($('signupBtn')) $('signupBtn').id = 'signUp';
@@ -82,7 +72,6 @@
   if ($('saveShareBtn')) $('saveShareBtn').id = 'savePublic';
   if ($('copyShareBtn')) $('copyShareBtn').id = 'copyShare';
 
-  // 表示名欄を追加（HTMLを大きく変更せず既存フォームに合わせる）
   if (!$('displayName')) {
     const usernameInput = $('userId');
     const usernameLabel = usernameInput?.closest('label');
@@ -158,7 +147,7 @@
           message('authStatus', 'データ読み込みエラー：' + (error?.message || error));
         });
       });
-      updateAccountUI();
+      await updateAccountUI();
       if (currentUser) await loadData();
     })();
     try {
@@ -174,49 +163,47 @@
     const username = $('userId').value.trim();
     const password = $('userPassword').value;
     const displayName = $('displayName')?.value.trim() || username;
+
     if (!validUsername(username)) {
       message('authStatus', 'ユーザーIDは半角英数字と _ の3〜20文字にしてください。');
       return;
     }
-    if (password.length < 8) {
-      message('authStatus', 'パスワードは8文字以上にしてください。');
+    if (password.length < 8 || password.length > 128) {
+      message('authStatus', 'パスワードは8〜128文字にしてください。');
       return;
     }
-    if (!client) {
+
+    const url = localStorage.getItem('aipri_url');
+    const key = localStorage.getItem('aipri_key');
+    if (!url || !key) {
       message('authStatus', '先に接続設定を保存してください。');
       return;
     }
 
     message('authStatus', '新規登録しています…');
-    const { data, error } = await client.auth.signUp({
-      email: usernameEmail(username),
-      password,
-      options: { data: { username, display_name: displayName } }
+    const response = await fetch(url.replace(/\/+$/, '') + '/functions/v1/smart-task', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: key,
+        Authorization: 'Bearer ' + key
+      },
+      body: JSON.stringify({ username, password, displayName })
     });
-    if (error) {
-      message('authStatus', '登録できませんでした：' + error.message);
+
+    let result;
+    try {
+      result = await response.json();
+    } catch {
+      throw new Error('サーバーから正しい応答がありませんでした。');
+    }
+
+    if (!response.ok || !result.success) {
+      message('authStatus', '登録できませんでした：' + (result.error || ('HTTP ' + response.status)));
       return;
     }
 
-    if (data.user && data.session) {
-      const { error: profileError } = await client.from('profiles').upsert({
-        id: data.user.id,
-        username: username.toLowerCase(),
-        display_name: displayName,
-        is_public: false,
-        share_slug: randomSlug()
-      });
-      if (profileError) {
-        message('authStatus', 'プロフィール保存エラー：' + profileError.message);
-        return;
-      }
-      currentUser = data.user;
-      await updateAccountUI();
-      await loadData();
-      message('authStatus', '登録しました！');
-    } else {
-      message('authStatus', '登録申請を受け付けました。Supabaseのメール確認設定が有効な場合は、メール確認設定を確認してください。');
-    }
+    message('authStatus', '登録できました。同じユーザーIDとパスワードでログインしてください。');
   }
 
   async function signIn() {
@@ -452,11 +439,7 @@
     await Promise.all([loadCards(), loadCharacters(), loadShare()]);
   }
 
-  // ボタン処理を、接続設定の状態に関係なく最初に登録する
-  $('signUp')?.addEventListener('click', () => runSafely(async () => {
-    await boot();
-    await signUp();
-  }));
+  $('signUp')?.addEventListener('click', () => runSafely(signUp));
   $('signIn')?.addEventListener('click', () => runSafely(async () => {
     await boot();
     await signIn();
@@ -477,7 +460,6 @@
     }
   });
 
-  // 接続設定を保存してSupabaseに接続
   $('save')?.addEventListener('click', async () => {
     const url = $('url').value.trim().replace(/\/+$/, '');
     const key = $('key').value.trim();
@@ -506,7 +488,6 @@
     }
   });
 
-  // 保存済み設定がある場合は自動接続
   if (localStorage.getItem('aipri_url') && localStorage.getItem('aipri_key')) {
     boot().catch(error => {
       console.error(error);
@@ -515,7 +496,6 @@
     });
   }
 
-  // URLの共有パラメータがある場合、共有ページを開く（公開読み取りはDBポリシーに依存）
   const params = new URLSearchParams(location.search);
   if (params.has('share')) showView('share');
   else showView('home');
