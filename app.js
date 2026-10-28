@@ -184,15 +184,15 @@
 
       client = window.supabase.createClient(url, key);
 
+      // ボタンの処理を先に登録する
+      $('signUp').onclick = () => runSafely(signUp);
+      $('signIn').onclick = () => runSafely(signIn);
+
+      // セッションを確認する
       const { data, error } = await client.auth.getSession();
       if (error) throw error;
 
       currentUser = data.session?.user || null;
-
-      $('signUp').onclick = () =>
-        runSafely(signUp);
-      $('signIn').onclick = () =>
-        runSafely(signIn);
       $('signOut').onclick = () =>
         runSafely(signOut);
       $('addCard').onclick = () =>
