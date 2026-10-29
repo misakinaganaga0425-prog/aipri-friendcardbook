@@ -80,10 +80,10 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <div class="buttonRow"><button id="save">保存して接続確認</button><button id="clear" class="secondary">消去</button></div><p id="status" role="status"></p>
   </section>
   <nav class="tabs" aria-label="メインメニュー">
-    <button class="active" data-view="home">⌂<small>ホーム</small></button>
-    <button data-view="cards">▦<small>フレカ</small></button>
-    <button data-view="characters">☆<small>マイキャラ</small></button>
-    <button data-view="share">↗<small>共有</small></button>
+    <button class="active" data-nav="home">⌂<small>ホーム</small></button>
+    <button data-nav="search">⌕<small>フレカ検索</small></button>
+    <button data-nav="register">＋<small>フレカ登録</small></button>
+    <button data-nav="share">↗<small>共有</small></button>
   </nav>
   <section id="home" class="view">
     <section id="authPanel" class="panel authPanel">
@@ -157,8 +157,18 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 
   function showView(viewName) {
     document.querySelectorAll('.view').forEach(view => view.classList.toggle('hidden', view.id !== viewName));
-    document.querySelectorAll('.tabs button').forEach(button => button.classList.toggle('active', button.dataset.view === viewName));
+    const selectedNav = viewName === 'cards' ? (document.getElementById('cardRegisterPanel') && !document.getElementById('cardRegisterPanel').classList.contains('hidden') ? 'register' : 'search') : viewName;
+    document.querySelectorAll('.tabs button').forEach(button => button.classList.toggle('active', button.dataset.nav === selectedNav));
     window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+  function showMainTab(tab) {
+    if (tab === 'search' || tab === 'register') {
+      showCardTab(tab);
+      showView('cards');
+      document.querySelectorAll('.tabs button').forEach(button => button.classList.toggle('active', button.dataset.nav === tab));
+      return;
+    }
+    showView(tab);
   }
   function showCardTab(tab) {
     const searching = tab === 'search';
@@ -166,6 +176,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     $('cardRegisterPanel')?.classList.toggle('hidden', searching);
     $('searchTab')?.classList.toggle('active', searching);
     $('registerTab')?.classList.toggle('active', !searching);
+    document.querySelectorAll('.tabs button').forEach(button => button.classList.toggle('active', button.dataset.nav === (searching ? 'search' : 'register')));
   }
   function runSafely(task) {
     return Promise.resolve().then(task).catch(error => {
@@ -179,7 +190,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   $('settingsToggle')?.addEventListener('click', () => { settings.classList.remove('hidden'); notice?.classList.add('hidden'); });
   $('closeSettings')?.addEventListener('click', () => settings.classList.add('hidden'));
   $('dismissNotice')?.addEventListener('click', () => notice?.classList.add('hidden'));
-  document.querySelectorAll('.tabs button').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
+  document.querySelectorAll('.tabs button').forEach(button => button.addEventListener('click', () => showMainTab(button.dataset.nav)));
   document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => showView(button.dataset.go)));
   $('searchTab')?.addEventListener('click', () => showCardTab('search'));
   $('registerTab')?.addEventListener('click', () => showCardTab('register'));
