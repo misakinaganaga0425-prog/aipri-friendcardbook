@@ -109,7 +109,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 #registeredCardsList .item { align-items:center; }
 #registeredCardsList .manageActions { display:flex; flex-direction:column; gap:6px; flex:none; }
 #registeredCardsList .manageActions button { padding:8px 10px; font-size:12px; }
-.cropCanvasWrap canvas { touch-action:none; cursor:grab; }
+.cropCanvasWrap canvas { touch-action:none; cursor:grab; user-select:none; -webkit-user-select:none; }
 .cropCanvasWrap canvas:active { cursor:grabbing; }
 @media(max-width:360px){ #cardsList{gap:7px}.catalogueCard{padding:7px}.catalogueCard .cardBottom{gap:4px} }
 
@@ -137,7 +137,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 #registeredCardsList .item { align-items:center; }
 #registeredCardsList .manageActions { display:flex; flex-direction:column; gap:6px; flex:none; }
 #registeredCardsList .manageActions button { padding:8px 10px; font-size:12px; }
-.cropCanvasWrap canvas { touch-action:none; cursor:grab; }
+.cropCanvasWrap canvas { touch-action:none; cursor:grab; user-select:none; -webkit-user-select:none; }
 .cropCanvasWrap canvas:active { cursor:grabbing; }
 @media(max-width:360px){ #cardsList{gap:7px}.catalogueCard{padding:7px}.catalogueCard .cardBottom{gap:4px} }
 
@@ -187,12 +187,12 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <div id="characterChips" class="characterChips" aria-label="マイキャラで絞り込み"></div>
     <details id="cardSearchPanel" class="panel searchControls">
       <summary class="searchSummary"><span>図鑑を検索・絞り込み</span><span class="summaryHint">タップして開閉</span></summary>
-      <label>キーワード検索<input id="cardSearch" type="search" placeholder="コーデ名・色・マイキャラ・姿・ブランド・メモ" autocomplete="off"></label>
+      <label>キーワード検索<input id="cardSearch" type="search" placeholder="コーデ名・色・マイキャラ・姿・弾数・メモ" autocomplete="off"></label>
       <div class="filterGrid">
         <label>マイキャラの姿<input id="appearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
-        <label>ブランド<input id="brandFilter" type="search" placeholder="例：Poppin' Heart、ポッピンハート" autocomplete="off"></label>
+        <label>コーデの弾数<select id="seriesFilter"><option value="">すべての弾数</option><option value="1弾">1弾</option><option value="2弾">2弾</option><option value="3弾">3弾</option><option value="4弾">4弾</option><option value="5弾">5弾</option><option value="6弾">6弾</option><option value="7弾">7弾</option><option value="8弾">8弾</option><option value="9弾">9弾</option><option value="10弾">10弾</option><option value="プリマジ">プリマジ</option><option value="その他">その他</option></select></label>
       </div>
-      <p class="hint">検索条件を空欄にすると、登録済みのフレカをすべて表示します。色・ブランド・メモなどは表示しなくても検索対象になります。</p>
+      <p class="hint">検索条件を空欄にすると、登録済みのフレカをすべて表示します。色・弾数・メモなどは表示しなくても検索対象になります。</p>
     </details>
     <section id="cardCataloguePanel" class="panel cataloguePanel" aria-live="polite">
       <div class="between"><h3>フレカ図鑑</h3><span id="searchResultCount" class="pill">0 枚</span></div>
@@ -210,7 +210,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <label>マイキャラ<select id="cardCharacter"><option value="">マイキャラを選択（任意）</option></select></label>
       <label>マイキャラをこの場で新規登録（任意）<input id="newCharacterInline" maxlength="100" placeholder="例：いのり"></label>
       <label>マイキャラの姿<input id="cardAppearance" maxlength="100" placeholder="例：通常、ツインテール、ボブ"></label>
-      <label>ブランド<input id="cardBrand" maxlength="100" placeholder="例：Poppin' Heart、ポッピンハート"></label>
+      <label>コーデの弾数<select id="cardSeries"><option value="">選択してください</option><option value="1弾">1弾</option><option value="2弾">2弾</option><option value="3弾">3弾</option><option value="4弾">4弾</option><option value="5弾">5弾</option><option value="6弾">6弾</option><option value="7弾">7弾</option><option value="8弾">8弾</option><option value="9弾">9弾</option><option value="10弾">10弾</option><option value="プリマジ">プリマジ</option><option value="その他">その他</option></select><span class="hint">例：1弾、プリマジ など</span></label>
       <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択後に切り取り位置や拡大率を調整できます。</span></label>
       <label>フレンドコード（QRコード）の画像<input id="cardQr" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・写真とは別に保存。QR全体が入るように切り取りできます。</span></label>
       <label>メモ（任意）<textarea id="cardMemo" rows="3" maxlength="1000" placeholder="自由にメモ"></textarea></label>
@@ -219,6 +219,12 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <section id="registeredCardsPanel" class="panel">
       <div class="between"><h3>登録済みフレカの編集・削除</h3><span id="manageCardCount" class="pill">0 枚</span></div>
       <p class="hint">登録したフレカはここから内容の編集・削除ができます。</p>
+      <label>キーワード検索<input id="manageCardSearch" type="search" placeholder="コーデ名・色・マイキャラ・メモ" autocomplete="off"></label>
+      <div class="filterGrid">
+        <label>マイキャラ<select id="manageCardCharacterFilter"><option value="">すべてのマイキャラ</option></select></label>
+        <label>コーデの弾数<select id="manageCardSeriesFilter"><option value="">すべての弾数</option><option value="1弾">1弾</option><option value="2弾">2弾</option><option value="3弾">3弾</option><option value="4弾">4弾</option><option value="5弾">5弾</option><option value="6弾">6弾</option><option value="7弾">7弾</option><option value="8弾">8弾</option><option value="9弾">9弾</option><option value="10弾">10弾</option><option value="プリマジ">プリマジ</option><option value="その他">その他</option></select></label>
+      </div>
+      <label>マイキャラの姿<input id="manageCardAppearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
       <div id="registeredCardsList" class="itemList"><p class="muted">ログインすると登録済みフレカが表示されます。</p></div>
     </section>
   </section>
@@ -232,10 +238,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   </section>
 </main>
 <div id="cropModal" class="cropModal hidden" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
-  <div class="cropDialog"><h2 id="cropTitle">画像を切り取る</h2><p id="cropHelp" class="hint">拡大率と位置を調整してください。</p>
+  <div class="cropDialog"><h2 id="cropTitle">画像を切り取る</h2><p id="cropHelp" class="hint">画像を指で動かし、2本指で拡大・縮小できます。</p>
     <div class="cropCanvasWrap"><canvas id="cropCanvas" width="900" height="1200"></canvas></div>
-    <div class="cropControls"><label>拡大率 <span id="cropZoomValue">1.0×</span><input id="cropZoom" type="range" min="1" max="3" step="0.05" value="1"></label>
-    <label>左右の位置<input id="cropX" type="range" min="0" max="100" value="50"></label><label>上下の位置<input id="cropY" type="range" min="0" max="100" value="50"></label></div>
     <div class="cropActions"><button type="button" id="cancelCrop" class="secondary">キャンセル</button><button type="button" id="applyCrop">この範囲で使用</button></div>
   </div>
 </div>
@@ -252,6 +256,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   let client = null, currentUser = null, bootPromise = null;
   let cards = [], characters = [], shareUrl = '', activeCharacter = 'all';
   const BUCKET = 'friend-card-media';
+  const SERIES = ['1弾','2弾','3弾','4弾','5弾','6弾','7弾','8弾','9弾','10弾','プリマジ','その他'];
   const message = (id, text) => { const el = $(id); if (el) el.textContent = text || ''; };
   const usernameEmail = name => name.toLowerCase() + '@users.aipri-friendcardbook.invalid';
   const validUsername = name => /^[a-zA-Z0-9_]{3,20}$/.test(name);
@@ -262,8 +267,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     document.querySelectorAll('.tabs button').forEach(button => button.classList.toggle('active', button.dataset.nav === viewName));
     window.scrollTo({ top: 0, behavior: 'auto' });
     if (viewName === 'search') renderCards();
+    if (viewName === 'register') renderManageCards();
   }
-  // Each bottom-tab item opens exactly one independent page section.
   function showMainTab(tab) { showView(tab); }
   function runSafely(task) {
     return Promise.resolve().then(task).catch(error => {
@@ -351,178 +356,248 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if (!$('signOut')) { const b=document.createElement('button'); b.id='signOut'; b.className='secondary'; b.textContent='ログアウト'; b.addEventListener('click',()=>runSafely(signOut)); $('home')?.prepend(b); }
   }
 
+  // Touch cropper: move with one finger, pinch with two fingers. The canvas itself is the final crop.
   let cropState = null;
-  function drawCropPreview() {
-    if (!cropState) return;
-    const {img, ratio} = cropState, canvas=$('cropCanvas'), ctx=canvas.getContext('2d');
-    const zoom=Number($('cropZoom').value), px=Number($('cropX').value)/100, py=Number($('cropY').value)/100;
-    const targetW=900, targetH=Math.round(targetW/ratio); canvas.width=targetW; canvas.height=targetH;
-    let sw=img.naturalWidth/zoom, sh=img.naturalHeight/zoom;
-    if (sw/sh > ratio) sw=sh*ratio; else sh=sw/ratio;
-    cropState.crop={sw,sh,sx:(img.naturalWidth-sw)*px,sy:(img.naturalHeight-sh)*py};
-    ctx.clearRect(0,0,targetW,targetH); ctx.drawImage(img,cropState.crop.sx,cropState.crop.sy,sw,sh,0,0,targetW,targetH);
-    $('cropZoomValue').textContent=zoom.toFixed(2)+'×';
+  const cropCanvas = $('cropCanvas');
+  const cropPointers = new Map();
+  let cropGesture = null;
+  function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
+  function cropMetrics(){
+    if(!cropState)return null;
+    const {img,zoom,panX,panY}=cropState, canvas=cropCanvas;
+    const scale=Math.max(canvas.width/img.naturalWidth,canvas.height/img.naturalHeight)*zoom;
+    const drawW=img.naturalWidth*scale,drawH=img.naturalHeight*scale;
+    const maxX=Math.max(0,(drawW-canvas.width)/2),maxY=Math.max(0,(drawH-canvas.height)/2);
+    cropState.panX=clamp(panX,-maxX,maxX);cropState.panY=clamp(panY,-maxY,maxY);
+    return {scale,drawW,drawH,dx:(canvas.width-drawW)/2+cropState.panX,dy:(canvas.height-drawH)/2+cropState.panY};
   }
-  const cropPointers = new Map(); let cropGesture = null;
-  function cropPoint(e){const r=$('cropCanvas').getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
-  function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
-  const cropCanvas=$('cropCanvas');
-  cropCanvas.addEventListener('pointerdown',e=>{if(!cropState)return;cropCanvas.setPointerCapture(e.pointerId);cropPointers.set(e.pointerId,cropPoint(e));cropGesture={zoom:Number($('cropZoom').value),x:Number($('cropX').value),y:Number($('cropY').value),point:cropPoint(e),dist:cropPointers.size===2?distance(...cropPointers.values()):0};});
-  cropCanvas.addEventListener('pointermove',e=>{if(!cropState||!cropPointers.has(e.pointerId))return;cropPointers.set(e.pointerId,cropPoint(e));if(cropPointers.size>=2){const pts=[...cropPointers.values()],dist=distance(pts[0],pts[1]);if(cropGesture?.dist){$('cropZoom').value=String(Math.max(1,Math.min(3,cropGesture.zoom*dist/cropGesture.dist)));drawCropPreview();}return;}if(cropGesture){const p=cropPoint(e),rect=cropCanvas.getBoundingClientRect(),crop=cropState.crop;if(crop){const maxX=Math.max(0,cropState.img.naturalWidth-crop.sw),maxY=Math.max(0,cropState.img.naturalHeight-crop.sh);$('cropX').value=String(Math.max(0,Math.min(100,cropGesture.x-(p.x-cropGesture.point.x)/rect.width*100*cropState.img.naturalWidth/Math.max(1,maxX))));$('cropY').value=String(Math.max(0,Math.min(100,cropGesture.y-(p.y-cropGesture.point.y)/rect.height*100*cropState.img.naturalHeight/Math.max(1,maxY))));drawCropPreview();}}});
-  const endCropPointer=e=>{cropPointers.delete(e.pointerId);cropGesture=null;if(cropPointers.size===1){const p=[...cropPointers.values()][0];cropGesture={zoom:Number($('cropZoom').value),x:Number($('cropX').value),y:Number($('cropY').value),point:p,dist:0};}};
-  cropCanvas.addEventListener('pointerup',endCropPointer);cropCanvas.addEventListener('pointercancel',endCropPointer);
-  function openCropper(file, input) {
-    const reader=new FileReader(); reader.onload=()=>{
-      const img=new Image(); img.onload=()=>{
-        const isQr=input.id==='cardQr', ratio=isQr?1:0.75;
-        cropState={img,file,input,ratio}; cropPointers.clear(); cropGesture=null; $('cropTitle').textContent=isQr?'QRコード画像を切り取る':'コーデ写真を切り取る';
-        $('cropHelp').textContent=isQr?'QRコード全体と四隅が入るように調整してね。':'マイキャラがきれいに入るように、拡大率と位置を調整してね。';
-        $('cropZoom').value='1';$('cropX').value='50';$('cropY').value='50';$('cropModal').classList.remove('hidden');drawCropPreview();
-      }; img.onerror=()=>message('cardRegisterStatus','画像を読み込めませんでした。別の画像を選んでください。'); img.src=reader.result;
-    }; reader.readAsDataURL(file);
+  function drawCropPreview(){
+    if(!cropState)return;
+    const ctx=cropCanvas.getContext('2d'),m=cropMetrics();
+    ctx.clearRect(0,0,cropCanvas.width,cropCanvas.height);
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,cropCanvas.width,cropCanvas.height);
+    ctx.drawImage(cropState.img,m.dx,m.dy,m.drawW,m.drawH);
   }
-  ['cropZoom','cropX','cropY'].forEach(id=>$(id).addEventListener('input',drawCropPreview));
-  ['cardPhoto','cardQr'].forEach(id=>$(id).addEventListener('change',e=>{const file=e.target.files?.[0];if(file){if(validImage(file,id==='cardQr'?'QRコード画像':'写真'))openCropper(file,e.target);else e.target.value='';}}));
-  $('cancelCrop').addEventListener('click',()=>{if(cropState)cropState.input.value='';cropState=null;$('cropModal').classList.add('hidden');});
+  function getCropPoint(e){
+    const rect=cropCanvas.getBoundingClientRect();
+    return {x:(e.clientX-rect.left)*cropCanvas.width/rect.width,y:(e.clientY-rect.top)*cropCanvas.height/rect.height};
+  }
+  function pointerDistance(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+  function startCropGesture(){
+    const pts=[...cropPointers.values()];
+    if(pts.length>=2){
+      cropGesture={mode:'pinch',zoom:cropState.zoom,distance:pointerDistance(pts[0],pts[1]),mid:{x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2},panX:cropState.panX,panY:cropState.panY};
+    }else if(pts.length===1){
+      cropGesture={mode:'drag',point:pts[0],panX:cropState.panX,panY:cropState.panY};
+    }
+  }
+  cropCanvas.addEventListener('pointerdown',e=>{
+    if(!cropState)return;
+    e.preventDefault();cropCanvas.setPointerCapture(e.pointerId);cropPointers.set(e.pointerId,getCropPoint(e));startCropGesture();
+  });
+  cropCanvas.addEventListener('pointermove',e=>{
+    if(!cropState||!cropPointers.has(e.pointerId))return;
+    e.preventDefault();cropPointers.set(e.pointerId,getCropPoint(e));
+    const pts=[...cropPointers.values()];
+    if(pts.length>=2&&cropGesture?.mode==='pinch'){
+      const dist=pointerDistance(pts[0],pts[1]);
+      cropState.zoom=clamp(cropGesture.zoom*(dist/Math.max(1,cropGesture.distance)),1,4);
+      cropState.panX=cropGesture.panX;cropState.panY=cropGesture.panY;drawCropPreview();
+    }else if(pts.length===1&&cropGesture?.mode==='drag'){
+      const p=pts[0];
+      cropState.panX=cropGesture.panX+(p.x-cropGesture.point.x)*0.85;
+      cropState.panY=cropGesture.panY+(p.y-cropGesture.point.y)*0.85;
+      drawCropPreview();
+    }
+  });
+  function endCropPointer(e){
+    cropPointers.delete(e.pointerId);
+    if(!cropState)return;
+    if(cropPointers.size===1)startCropGesture();else if(cropPointers.size>=2)startCropGesture();else cropGesture=null;
+  }
+  cropCanvas.addEventListener('pointerup',endCropPointer);cropCanvas.addEventListener('pointercancel',endCropPointer);cropCanvas.addEventListener('lostpointercapture',endCropPointer);
+  function openCropper(file,input){
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        const isQr=input.id==='cardQr',ratio=isQr?1:0.75;
+        cropCanvas.width=900;cropCanvas.height=Math.round(900/ratio);
+        cropState={img,file,input,ratio,zoom:1,panX:0,panY:0};
+        cropPointers.clear();cropGesture=null;
+        $('cropTitle').textContent=isQr?'QRコード画像を切り取る':'コーデ写真を切り取る';
+        $('cropHelp').textContent=isQr?'画像を指で動かし、2本指で拡大・縮小してQRコード全体を合わせてね。':'画像を指で動かし、2本指で拡大・縮小してマイキャラを合わせてね。';
+        $('cropModal').classList.remove('hidden');drawCropPreview();
+      };
+      img.onerror=()=>message('cardRegisterStatus','画像を読み込めませんでした。別の画像を選んでください。');
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  ['cardPhoto','cardQr'].forEach(id=>$(id).addEventListener('change',e=>{
+    const file=e.target.files?.[0];
+    if(file){if(validImage(file,id==='cardQr'?'QRコード画像':'写真'))openCropper(file,e.target);else e.target.value='';}
+  }));
+  $('cancelCrop').addEventListener('click',()=>{if(cropState)cropState.input.value='';cropState=null;cropPointers.clear();cropGesture=null;$('cropModal').classList.add('hidden');});
   $('applyCrop').addEventListener('click',()=>{
-    if(!cropState)return; const canvas=$('cropCanvas'),{file,input}=cropState;
-    canvas.toBlob(blob=>{if(!blob){message('cardRegisterStatus','切り取りに失敗しました。');return;}
+    if(!cropState)return;
+    const canvas=cropCanvas,{file,input}=cropState;
+    canvas.toBlob(blob=>{
+      if(!blob){message('cardRegisterStatus','切り取りに失敗しました。');return;}
       const ext=blob.type==='image/jpeg'?'jpg':'png',name=(file.name.replace(/\.[^.]+$/,'')||'cropped')+'-cropped.'+ext;
       const cropped=new File([blob],name,{type:blob.type||'image/png',lastModified:Date.now()});
-      const transfer=new DataTransfer();transfer.items.add(cropped);input.files=transfer.files;cropState=null;$('cropModal').classList.add('hidden');message('cardRegisterStatus','切り取り範囲を設定しました。登録するとこの画像が保存されます。');
+      const transfer=new DataTransfer();transfer.items.add(cropped);input.files=transfer.files;
+      cropState=null;cropPointers.clear();cropGesture=null;$('cropModal').classList.add('hidden');
+      message('cardRegisterStatus','切り取り範囲を設定しました。登録するとこの画像が保存されます。');
     },'image/jpeg',0.92);
   });
   $('cropModal').addEventListener('click',e=>{if(e.target===$('cropModal'))$('cancelCrop').click();});
 
-  function getCardDataFields() {
-    return { color:$('cardColor').value.trim(), appearance:$('cardAppearance').value.trim(), brand:$('cardBrand').value.trim(), memo:$('cardMemo').value.trim() };
+  function getCardDataFields(){
+    return {color:$('cardColor').value.trim(),appearance:$('cardAppearance').value.trim(),series:$('cardSeries').value,memo:$('cardMemo').value.trim()};
   }
-  function validImage(file, label) {
-    if (!file) return true;
-    if (!['image/jpeg','image/png','image/webp'].includes(file.type)) { message('cardRegisterStatus', label + 'はJPEG・PNG・WebP画像を選んでください。'); return false; }
-    if (file.size > 10*1024*1024) { message('cardRegisterStatus', label + 'は10MB以下にしてください。'); return false; }
+  function validImage(file,label){
+    if(!file)return true;
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type)){message('cardRegisterStatus',label+'はJPEG・PNG・WebP画像を選んでください。');return false;}
+    if(file.size>10*1024*1024){message('cardRegisterStatus',label+'は10MB以下にしてください。');return false;}
     return true;
   }
-  async function uploadCardImage(cardId, file, type) {
-    if (!file) return null;
-    const ext = ({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[file.type];
-    const path = `${currentUser.id}/${cardId}/${type}.${ext}`;
-    const { error } = await client.storage.from(BUCKET).upload(path, file, { upsert:true, contentType:file.type });
-    if (error) throw new Error('画像アップロード失敗：' + error.message + '（Storageのバケットとポリシーを確認してください）');
+  async function uploadCardImage(cardId,file,type){
+    if(!file)return null;
+    const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[file.type],path=`${currentUser.id}/${cardId}/${type}.${ext}`;
+    const {error}=await client.storage.from(BUCKET).upload(path,file,{upsert:true,contentType:file.type});
+    if(error)throw new Error('画像アップロード失敗：'+error.message+'（Storageのバケットとポリシーを確認してください）');
     return path;
   }
-  let editingCardId = null;
-  function resetCardForm(){['newCardName','cardColor','newCharacterInline','cardAppearance','cardBrand','cardMemo','cardPhoto','cardQr'].forEach(id=>{if($(id))$(id).value='';});$('cardCharacter').value='';editingCardId=null;$('addCard').textContent='フレカを登録';$('cancelCardEdit').classList.add('hidden');}
-  function beginEditCard(card){
-    const d=card.card_data||{};editingCardId=card.id;$('newCardName').value=card.card_name||'';$('cardColor').value=d.color||'';$('cardCharacter').value=card.character_id||'';$('newCharacterInline').value='';$('cardAppearance').value=d.appearance||'';$('cardBrand').value=d.brand||'';$('cardMemo').value=d.memo||'';$('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');$('cardRegisterPanel').scrollIntoView({behavior:'smooth',block:'start'});message('cardRegisterStatus','編集モードです。写真・QRを選び直さなければ現在の画像を維持します。');
+  let editingCardId=null;
+  function resetCardForm(){
+    ['newCardName','cardColor','newCharacterInline','cardAppearance','cardSeries','cardMemo','cardPhoto','cardQr'].forEach(id=>{if($(id))$(id).value='';});
+    $('cardCharacter').value='';editingCardId=null;$('addCard').textContent='フレカを登録';$('cancelCardEdit').classList.add('hidden');
   }
-  async function addCard() {
-    if (!currentUser) return message('cardRegisterStatus','先にホームでログインしてください。');
+  function beginEditCard(card){
+    const d=card.card_data||{};editingCardId=card.id;$('newCardName').value=card.card_name||'';$('cardColor').value=d.color||'';$('cardCharacter').value=card.character_id||'';$('newCharacterInline').value='';$('cardAppearance').value=d.appearance||'';$('cardSeries').value=SERIES.includes(d.series)?d.series:'';$('cardMemo').value=d.memo||'';$('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');$('cardRegisterPanel').scrollIntoView({behavior:'smooth',block:'start'});message('cardRegisterStatus','編集モードです。写真・QRを選び直さなければ現在の画像を維持します。');
+  }
+  async function addCard(){
+    if(!currentUser)return message('cardRegisterStatus','先にホームでログインしてください。');
     const name=$('newCardName').value.trim(),inlineCharacterName=$('newCharacterInline').value.trim();let characterId=$('cardCharacter').value||null;
     const photo=$('cardPhoto').files[0]||null,qr=$('cardQr').files[0]||null;
     if(!name)return message('cardRegisterStatus','コーデ名を入力してください。');if(!validImage(photo,'写真')||!validImage(qr,'QRコード画像'))return;
     const isEdit=!!editingCardId;message('cardRegisterStatus',isEdit?'フレカを更新しています…':'フレカを登録しています…');$('addCard').disabled=true;let cardId=editingCardId;
     try{
       if(inlineCharacterName){const {data:newCharacter,error:charError}=await client.from('my_characters').insert({user_id:currentUser.id,character_name:inlineCharacterName,character_data:{memo:''}}).select('id,character_name,character_data,created_at').single();if(charError)throw new Error('マイキャラ登録エラー：'+charError.message);characters.unshift(newCharacter);characterId=newCharacter.id;}
-      let oldCard=cards.find(c=>c.id===cardId);if(isEdit&&!oldCard)throw new Error('編集するフレカが見つかりません。');
-      const oldData=oldCard?.card_data||{};const fields={...getCardDataFields(),photo_path:oldData.photo_path||null,qr_path:oldData.qr_path||null};
+      const oldCard=cards.find(c=>c.id===cardId);if(isEdit&&!oldCard)throw new Error('編集するフレカが見つかりません。');
+      const oldData=oldCard?.card_data||{};
+      const fields={...getCardDataFields(),brand:oldData.brand||'',photo_path:oldData.photo_path||null,qr_path:oldData.qr_path||null};
       if(isEdit){const {error}=await client.from('cards').update({card_name:name,card_data:fields,character_id:characterId}).eq('id',cardId).eq('user_id',currentUser.id);if(error)throw error;}
       else{const {data,error}=await client.from('cards').insert({user_id:currentUser.id,card_name:name,card_data:fields,character_id:characterId}).select('id').single();if(error)throw error;cardId=data.id;}
-      const newPhotoPath=photo?await uploadCardImage(cardId,photo,'outfit-photo'):fields.photo_path;const newQrPath=qr?await uploadCardImage(cardId,qr,'friend-qr'):fields.qr_path;
-      if(photo||qr){const updated={...getCardDataFields(),photo_path:newPhotoPath,qr_path:newQrPath};const {error}=await client.from('cards').update({card_data:updated}).eq('id',cardId).eq('user_id',currentUser.id);if(error)throw error;}
+      const newPhotoPath=photo?await uploadCardImage(cardId,photo,'outfit-photo'):fields.photo_path,newQrPath=qr?await uploadCardImage(cardId,qr,'friend-qr'):fields.qr_path;
+      if(photo||qr){const updated={...getCardDataFields(),brand:oldData.brand||'',photo_path:newPhotoPath,qr_path:newQrPath};const {error}=await client.from('cards').update({card_data:updated}).eq('id',cardId).eq('user_id',currentUser.id);if(error)throw error;}
       resetCardForm();message('cardRegisterStatus',isEdit?'フレカを更新しました！':'フレカを登録しました！');await loadCards();await loadCharacters();if(!isEdit)showView('search');
     }catch(error){message('cardRegisterStatus',(isEdit?'更新':'登録')+'中にエラー：'+error.message);await loadCards();}finally{$('addCard').disabled=false;}
   }
-  async function addCharacter() {
-    if (!currentUser) return message('characterStatus','先にホームでログインしてください。');
-    const name=$('newCharName').value.trim(), memo=$('characterMemo').value.trim();
-    if (!name) return message('characterStatus','マイキャラ名を入力してください。');
+  async function addCharacter(){
+    if(!currentUser)return message('characterStatus','先にホームでログインしてください。');
+    const name=$('newCharName').value.trim(),memo=$('characterMemo').value.trim();
+    if(!name)return message('characterStatus','マイキャラ名を入力してください。');
     const {error}=await client.from('my_characters').insert({user_id:currentUser.id,character_name:name,character_data:{memo}});
-    if(error) return message('characterStatus','登録エラー：'+error.message);
-    $('newCharName').value=''; $('characterMemo').value=''; message('characterStatus','マイキャラを登録しました！'); await loadCharacters();
+    if(error)return message('characterStatus','登録エラー：'+error.message);
+    $('newCharName').value='';$('characterMemo').value='';message('characterStatus','マイキャラを登録しました！');await loadCharacters();
   }
-  function updateCharacterOptions() {
-    const selector=$('cardCharacter'); if (!selector) return;
-    const old=selector.value; selector.replaceChildren();
-    const blank=document.createElement('option'); blank.value=''; blank.textContent='マイキャラを選択（任意）'; selector.appendChild(blank);
+  function updateCharacterOptions(){
+    const selector=$('cardCharacter');if(!selector)return;const old=selector.value;selector.replaceChildren();
+    const blank=document.createElement('option');blank.value='';blank.textContent='マイキャラを選択（任意）';selector.appendChild(blank);
+    characters.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.character_name;selector.appendChild(o);});
+    selector.value=characters.some(c=>c.id===old)?old:'';
+    updateManageFilterOptions();
+  }
+  function updateManageFilterOptions(){
+    const selector=$('manageCardCharacterFilter');if(!selector)return;const old=selector.value;selector.replaceChildren();
+    const blank=document.createElement('option');blank.value='';blank.textContent='すべてのマイキャラ';selector.appendChild(blank);
     characters.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.character_name;selector.appendChild(o);});
     selector.value=characters.some(c=>c.id===old)?old:'';
   }
-  function renderCharacterChips() {
+  function renderCharacterChips(){
     const containers=[$('characterChips'),$('homeCharacterList')].filter(Boolean);
     containers.forEach((container,index)=>{
       container.replaceChildren();
-      if (!currentUser) { const p=document.createElement('p');p.className='muted';p.textContent='ログインするとマイキャラが表示されます。';container.appendChild(p);return; }
-      if (index===0) {
+      if(!currentUser){const p=document.createElement('p');p.className='muted';p.textContent='ログインするとマイキャラが表示されます。';container.appendChild(p);return;}
+      if(index===0){
         const all=document.createElement('button');all.textContent='全マイキャラ';all.classList.toggle('active',activeCharacter==='all');all.addEventListener('click',()=>{activeCharacter='all';renderCharacterChips();renderCards();});container.appendChild(all);
         characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);b.addEventListener('click',()=>{activeCharacter=c.id;renderCharacterChips();renderCards();});container.appendChild(b);});
-      } else {
-        if (!characters.length) { const p=document.createElement('p');p.className='muted';p.textContent='マイキャラはまだ登録されていません。';container.appendChild(p); }
+      }else{
+        if(!characters.length){const p=document.createElement('p');p.className='muted';p.textContent='マイキャラはまだ登録されていません。';container.appendChild(p);}
         characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.addEventListener('click',()=>{activeCharacter=c.id;showView('search');renderCharacterChips();renderCards();});container.appendChild(b);});
       }
     });
   }
-  async function signedImageUrl(path) {
-    if (!path || !client) return null;
-    const {data,error}=await client.storage.from(BUCKET).createSignedUrl(path,3600);
-    if(error){console.warn('画像を読み込めませんでした',error.message);return null;} return data?.signedUrl || null;
+  async function signedImageUrl(path){
+    if(!path||!client)return null;const {data,error}=await client.storage.from(BUCKET).createSignedUrl(path,3600);
+    if(error){console.warn('画像を読み込めませんでした',error.message);return null;}return data?.signedUrl||null;
   }
-  function appendText(parent, tag, text, className) { const el=document.createElement(tag);el.textContent=escapeText(text);if(className)el.className=className;parent.appendChild(el);return el; }
-  async function renderCardMedia(photoStage, qrStage, data) {
-    if (data?.photo_path) {
-      const url=await signedImageUrl(data.photo_path);
-      if(url){const img=document.createElement('img');img.src=url;img.alt='コーデ写真';img.loading='lazy';photoStage.replaceChildren(img);}
-    }
-    if (data?.qr_path) {
-      const url=await signedImageUrl(data.qr_path);
-      if(url){const img=document.createElement('img');img.src=url;img.alt='フレンドコードQR';img.loading='lazy';qrStage.replaceChildren(img);}
-    }
+  function appendText(parent,tag,text,className){const el=document.createElement(tag);el.textContent=escapeText(text);if(className)el.className=className;parent.appendChild(el);return el;}
+  async function renderCardMedia(photoStage,qrStage,data){
+    if(data?.photo_path){const url=await signedImageUrl(data.photo_path);if(url){const img=document.createElement('img');img.src=url;img.alt='コーデ写真';img.loading='lazy';photoStage.replaceChildren(img);}}
+    if(data?.qr_path){const url=await signedImageUrl(data.qr_path);if(url){const img=document.createElement('img');img.src=url;img.alt='フレンドコードQR';img.loading='lazy';qrStage.replaceChildren(img);}}
   }
-  function renderCards() {
-    const list=$('cardsList'); if(!list)return; list.replaceChildren();
-    const count=$('searchResultCount');
+  function renderCards(){
+    const list=$('cardsList');if(!list)return;list.replaceChildren();const count=$('searchResultCount');
     if(!currentUser){if(count)count.textContent='— 枚';appendText(list,'p','ログインするとフレカを表示できます。','muted');return;}
     const keyword=($('cardSearch')?.value||'').trim().toLocaleLowerCase();
     const appearanceFilter=($('appearanceFilter')?.value||'').trim().toLocaleLowerCase();
-    const brandFilter=($('brandFilter')?.value||'').trim().toLocaleLowerCase();
+    const seriesFilter=$('seriesFilter')?.value||'';
     const filtered=cards.filter(card=>{
-      const d=card.card_data||{}, character=characters.find(c=>c.id===card.character_id), characterName=character?.character_name||'';
-      const fields=[card.card_name,d.color,d.appearance,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
-      const matchesKeyword=!keyword || fields.some(x=>x.includes(keyword));
-      const matchesAppearance=!appearanceFilter || String(d.appearance||'').toLocaleLowerCase().includes(appearanceFilter);
-      const matchesBrand=!brandFilter || String(d.brand||'').toLocaleLowerCase().includes(brandFilter);
-      return matchesKeyword && matchesAppearance && matchesBrand && (activeCharacter==='all'||card.character_id===activeCharacter);
+      const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),characterName=character?.character_name||'';
+      const fields=[card.card_name,d.color,d.appearance,d.series,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
+      const matchesKeyword=!keyword||fields.some(x=>x.includes(keyword));
+      const matchesAppearance=!appearanceFilter||String(d.appearance||'').toLocaleLowerCase().includes(appearanceFilter);
+      const matchesSeries=!seriesFilter||String(d.series||'')===seriesFilter;
+      return matchesKeyword&&matchesAppearance&&matchesSeries&&(activeCharacter==='all'||card.character_id===activeCharacter);
     });
     if(count)count.textContent=filtered.length+' 枚';
     if(!filtered.length){appendText(list,'p',cards.length?'条件に合うフレカがありません。':'フレカはまだ登録されていません。','muted');return;}
     filtered.forEach(card=>{
-      const d=card.card_data||{}, character=characters.find(c=>c.id===card.character_id);
-      const item=document.createElement('article');item.className='catalogueCard';
-      const title=appendText(item,'h3',card.card_name,'cardTitle');
-      const photoStage=document.createElement('div');photoStage.className='photoStage';
-      const photoPlaceholder=document.createElement('div');photoPlaceholder.className='photoPlaceholder';photoPlaceholder.textContent='コーデ写真';photoStage.appendChild(photoPlaceholder);item.appendChild(photoStage);
-      const bottom=document.createElement('div');bottom.className='cardBottom';
-      const qrStage=document.createElement('div');qrStage.className='qrStage';
+      const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),item=document.createElement('article');item.className='catalogueCard';
+      appendText(item,'h3',card.card_name,'cardTitle');
+      const photoStage=document.createElement('div');photoStage.className='photoStage';const photoPlaceholder=document.createElement('div');photoPlaceholder.className='photoPlaceholder';photoPlaceholder.textContent='コーデ写真';photoStage.appendChild(photoPlaceholder);item.appendChild(photoStage);
+      const bottom=document.createElement('div');bottom.className='cardBottom';const qrStage=document.createElement('div');qrStage.className='qrStage';
       const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qrStage.appendChild(qrPlaceholder);bottom.appendChild(qrStage);
-      const details=document.createElement('div');details.className='cardDetails';
-      appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');
-      appendText(details,'div',(d.appearance||'姿未設定')+' ver.','appearanceName');
-      bottom.appendChild(details);item.appendChild(bottom);list.appendChild(item);
+      const details=document.createElement('div');details.className='cardDetails';appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');appendText(details,'div',(d.appearance||'姿未設定')+' ver.','appearanceName');bottom.appendChild(details);item.appendChild(bottom);list.appendChild(item);
       renderCardMedia(photoStage,qrStage,d).catch(console.error);
     });
   }
   function renderManageCards(){
-    const list=$('registeredCardsList');if(!list)return;list.replaceChildren();const count=$('manageCardCount');if(count)count.textContent=cards.length+' 枚';
-    if(!currentUser){appendText(list,'p','ログインすると登録済みフレカが表示されます。','muted');return;}if(!cards.length){appendText(list,'p','登録済みフレカはありません。','muted');return;}
-    cards.forEach(card=>{const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id);const item=document.createElement('article');item.className='item';const info=document.createElement('div');info.className='itemInfo';appendText(info,'strong',card.card_name,'');appendText(info,'p',(character?.character_name||'マイキャラ未設定')+' ・ '+(d.appearance||'姿未設定'),'');const actions=document.createElement('div');actions.className='manageActions';const edit=document.createElement('button');edit.className='secondary';edit.textContent='編集';edit.addEventListener('click',()=>beginEditCard(card));const del=document.createElement('button');del.className='danger';del.textContent='削除';del.addEventListener('click',()=>runSafely(async()=>{if(!confirm('「'+card.card_name+'」を削除しますか？'))return;const paths=[d.photo_path,d.qr_path].filter(Boolean);if(paths.length){const {error}=await client.storage.from(BUCKET).remove(paths);if(error)console.warn(error.message);}const {error}=await client.from('cards').delete().eq('id',card.id).eq('user_id',currentUser.id);if(error)throw error;if(editingCardId===card.id)resetCardForm();message('cardRegisterStatus','フレカを削除しました。');await loadCards();}));actions.append(edit,del);item.append(info,actions);list.appendChild(item);});
+    const list=$('registeredCardsList');if(!list)return;list.replaceChildren();
+    const keyword=($('manageCardSearch')?.value||'').trim().toLocaleLowerCase(),appearance=($('manageCardAppearanceFilter')?.value||'').trim().toLocaleLowerCase(),series=$('manageCardSeriesFilter')?.value||'',characterId=$('manageCardCharacterFilter')?.value||'';
+    const filtered=cards.filter(card=>{
+      const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),characterName=character?.character_name||'';
+      const fields=[card.card_name,d.color,d.appearance,d.series,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
+      return (!keyword||fields.some(x=>x.includes(keyword)))&&(!appearance||String(d.appearance||'').toLocaleLowerCase().includes(appearance))&&(!series||String(d.series||'')===series)&&(!characterId||card.character_id===characterId);
+    });
+    const count=$('manageCardCount');if(count)count.textContent=filtered.length+' / '+cards.length+' 枚';
+    if(!currentUser){appendText(list,'p','ログインすると登録済みフレカが表示されます。','muted');return;}
+    if(!cards.length){appendText(list,'p','登録済みフレカはありません。','muted');return;}
+    if(!filtered.length){appendText(list,'p','条件に合うフレカがありません。','muted');return;}
+    filtered.forEach(card=>{
+      const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),item=document.createElement('article');item.className='item';
+      const info=document.createElement('div');info.className='itemInfo';appendText(info,'strong',card.card_name,'');appendText(info,'p',(character?.character_name||'マイキャラ未設定')+' ・ '+(d.appearance||'姿未設定')+' ・ '+(d.series||'弾数未設定'),'');
+      const actions=document.createElement('div');actions.className='manageActions';
+      const edit=document.createElement('button');edit.className='secondary';edit.textContent='編集';edit.addEventListener('click',()=>beginEditCard(card));
+      const del=document.createElement('button');del.className='danger';del.textContent='削除';del.addEventListener('click',()=>runSafely(async()=>{
+        if(!confirm('「'+card.card_name+'」を削除しますか？'))return;
+        const paths=[d.photo_path,d.qr_path].filter(Boolean);if(paths.length){const {error}=await client.storage.from(BUCKET).remove(paths);if(error)console.warn(error.message);}
+        const {error}=await client.from('cards').delete().eq('id',card.id).eq('user_id',currentUser.id);if(error)throw error;
+        if(editingCardId===card.id)resetCardForm();message('cardRegisterStatus','フレカを削除しました。');await loadCards();
+      }));
+      actions.append(edit,del);item.append(info,actions);list.appendChild(item);
+    });
   }
-  async function loadCards() {
+  async function loadCards(){
     if(!client||!currentUser)return;
     const {data,error}=await client.from('cards').select('id,card_name,card_data,character_id,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false});
     if(error){message('cardRegisterStatus','読み込みエラー：'+error.message);return;}
     cards=data||[];message('cardCount',String(cards.length));renderCards();renderManageCards();
   }
-  function renderCharacters() {
+  function renderCharacters(){
     const list=$('charsList');if(!list)return;list.replaceChildren();
     if(!currentUser){appendText(list,'p','ログインするとマイキャラを表示できます。','muted');return;}
     if(!characters.length){appendText(list,'p','マイキャラはまだ登録されていません。','muted');return;}
@@ -540,21 +615,20 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       }));actions.append(edit,del);item.append(info,actions);list.appendChild(item);
     });
   }
-  async function loadCharacters() {
+  async function loadCharacters(){
     if(!client||!currentUser)return;
     const {data,error}=await client.from('my_characters').select('id,character_name,character_data,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false});
     if(error){message('characterStatus','読み込みエラー：'+error.message);return;}
     characters=data||[];message('charCount',String(characters.length));updateCharacterOptions();renderCharacters();renderCharacterChips();
   }
-  async function loadShare() {
+  async function loadShare(){
     if(!client||!currentUser)return;
     const {data,error}=await client.from('profiles').select('is_public,share_slug,display_name').eq('id',currentUser.id).maybeSingle();
     if(error||!data){message('shareStatus','プロフィールを読み込めませんでした。');return;}
-    $('publicToggle').checked=!!data.is_public;
-    shareUrl=data.share_slug?location.origin+location.pathname+'?share='+encodeURIComponent(data.share_slug):'';
+    $('publicToggle').checked=!!data.is_public;shareUrl=data.share_slug?location.origin+location.pathname+'?share='+encodeURIComponent(data.share_slug):'';
     $('shareUrl').value=data.is_public&&shareUrl?shareUrl:'現在は非公開です。';$('shareLinkArea').classList.toggle('hidden',!data.is_public||!shareUrl);
   }
-  async function savePublic() {
+  async function savePublic(){
     if(!currentUser)return message('shareStatus','先にログインしてください。');
     const {error}=await client.from('profiles').update({is_public:$('publicToggle').checked}).eq('id',currentUser.id);
     if(error)return message('shareStatus','保存エラー：'+error.message);
@@ -570,7 +644,9 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   $('cancelCardEdit')?.addEventListener('click',()=>{resetCardForm();message('cardRegisterStatus','編集をキャンセルしました。');});
   $('cardSearch')?.addEventListener('input',renderCards);
   $('appearanceFilter')?.addEventListener('input',renderCards);
-  $('brandFilter')?.addEventListener('input',renderCards);
+  $('seriesFilter')?.addEventListener('change',renderCards);
+  ['manageCardSearch','manageCardAppearanceFilter'].forEach(id=>$(id)?.addEventListener('input',renderManageCards));
+  ['manageCardCharacterFilter','manageCardSeriesFilter'].forEach(id=>$(id)?.addEventListener('change',renderManageCards));
   $('copyShare')?.addEventListener('click',async()=>{
     if(!shareUrl)return message('shareStatus','共有URLがありません。プロフィール設定を確認してください。');
     try{await navigator.clipboard.writeText(shareUrl);message('shareStatus','共有URLをコピーしました。');}catch{message('shareStatus',shareUrl);}
@@ -585,7 +661,6 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   showView(new URLSearchParams(location.search).has('share')?'share':'home');
   if(localStorage.getItem('aipri_url')&&localStorage.getItem('aipri_key'))boot().catch(error=>{console.error(error);message('authStatus','初期化エラー：'+(error?.message||error));});
 })();
-
 </script>
 </body>
 </html>
