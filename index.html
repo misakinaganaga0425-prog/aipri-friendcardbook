@@ -62,14 +62,33 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   }
 }
 
-/* Rebuilt search page: independent filters above an always-visible catalogue list. */
+/* Rebuilt search page: independent filters and portrait-oriented friend-card catalogue. */
 #search .searchControls { margin-bottom: 10px; }
 #search .cataloguePanel { margin-top: 10px; }
 #search .filterGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 #search .filterGrid label { min-width: 0; }
 #search .cataloguePanel h3 { margin: 0; }
-@media (max-width: 420px) { #search .filterGrid { grid-template-columns: 1fr; gap: 0; } }
+#cardsList { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; }
+.catalogueCard { position:relative; display:flex; flex-direction:column; align-items:stretch; gap:12px; min-width:0; padding:20px 16px; border:2px solid #9db8e9; border-radius:24px; background:#dce8ff; }
+.catalogueCard .cardTitle { margin:0 36px 0 0; text-align:center; color:#687b9c; font-size:clamp(19px,5vw,28px); font-weight:900; line-height:1.35; overflow-wrap:anywhere; }
+.catalogueCard .cardDelete { position:absolute; top:12px; right:12px; z-index:1; }
+.catalogueCard .photoStage { display:flex; justify-content:center; width:100%; }
+.catalogueCard .photoStage img { display:block; width:min(100%,360px); max-height:540px; object-fit:contain; padding:7px; border:5px solid white; border-radius:16px; background:white; }
+.catalogueCard .photoPlaceholder { width:min(100%,360px); min-height:150px; display:grid; place-items:center; border:2px dashed #9db8e9; border-radius:16px; color:#7189b4; background:rgba(255,255,255,.55); text-align:center; padding:20px; }
+.catalogueCard .cardBottom { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; align-items:center; }
+.catalogueCard .qrStage { min-width:0; display:flex; justify-content:center; }
+.catalogueCard .qrStage img { width:100%; max-width:190px; max-height:220px; object-fit:contain; background:white; padding:5px; }
+.catalogueCard .cardDetails { min-width:0; text-align:center; }
+.catalogueCard .characterName { display:block; padding:10px 8px; border-radius:12px; background:#7898d6; color:#fff; font-size:clamp(18px,5vw,26px); font-weight:900; overflow-wrap:anywhere; }
+.catalogueCard .appearanceName { margin-top:10px; color:#687b9c; font-weight:900; font-size:18px; overflow-wrap:anywhere; }
+.catalogueCard .metaLine { justify-content:center; }
+.catalogueCard .metaTag { background:rgba(255,255,255,.7); }
+.catalogueCard .memo { color:#526b94; font-size:12px; }
+@media (max-width: 420px) { #search .filterGrid { grid-template-columns: 1fr; gap: 0; } .catalogueCard { padding:16px 12px; } .catalogueCard .cardBottom { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; } .catalogueCard .appearanceName { font-size:15px; } }
 
+
+.cropModal{position:fixed;inset:0;z-index:1000;background:rgba(17,43,58,.68);display:flex;align-items:center;justify-content:center;padding:16px}.cropDialog{width:min(100%,520px);max-height:92dvh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:0 18px 60px #16394d55}.cropDialog h2{font-size:20px}.cropCanvasWrap{display:flex;justify-content:center;background:#eef8fc;border-radius:16px;padding:10px;overflow:hidden}.cropCanvasWrap canvas{display:block;max-width:100%;max-height:48dvh;object-fit:contain;border-radius:8px}.cropControls label{margin:10px 0}.cropControls input[type=range]{width:100%;accent-color:#55b9e5}.cropActions{display:flex;gap:8px;position:sticky;bottom:0;background:#fff;padding-top:10px}.cropActions button{flex:1}
+.catalogueCard{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding:14px;border:1px solid #cce8f5;border-radius:20px;background:#fbfeff;min-width:0}.catalogueCard .cardTitle{font-size:clamp(18px,4.5vw,24px);line-height:1.35;text-align:center;overflow-wrap:anywhere;margin:0;padding:5px 42px 7px}.catalogueCard .cardDelete{position:absolute;right:10px;top:10px;z-index:1}.photoStage{width:min(100%,320px);margin:0 auto;aspect-ratio:3/4;display:grid;place-items:center;overflow:hidden;border:1px solid var(--line);border-radius:16px;background:#f1faff}.photoStage img{width:100%;height:100%;object-fit:contain}.photoPlaceholder{padding:12px;color:#7898a8;text-align:center;font-size:12px}.cardBottom{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center}.qrStage{display:grid;place-items:center;min-width:0;aspect-ratio:1/1;overflow:hidden;background:#fff;border:1px solid var(--line);border-radius:14px}.qrStage img{width:100%;height:100%;object-fit:contain}.cardDetails{min-width:0;overflow-wrap:anywhere}.characterName{display:block;font-size:clamp(18px,4vw,23px);line-height:1.4}.appearanceName{color:#6d93a5;margin-top:6px}.catalogueCard .metaLine{margin-top:8px}.catalogueCard .memo{font-size:12px;margin-top:8px}@media(max-width:360px){.cardBottom{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}.catalogueCard{padding:10px}}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -105,7 +124,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <h2>コレクション</h2>
     <div class="stats"><article><small>登録フレカ</small><strong id="cardCount">0</strong></article><article><small>マイキャラ</small><strong id="charCount">0</strong></article><article><small>接続状態</small><strong id="dbState">未接続</strong></article></div>
     <section class="panel"><div class="between"><h3>マイキャラを登録</h3><span class="miniIcon">♡</span></div>
-      <label>マイキャラ名<input id="newCharName" maxlength="100" placeholder="例：いちご"></label>
+      <label>マイキャラ名<input id="newCharName" maxlength="100" placeholder="例：いのり"></label>
       <label>メモ（任意）<textarea id="characterMemo" rows="2" maxlength="300" placeholder="キャラについてのメモ"></textarea></label>
       <button id="addChar">マイキャラを追加</button><p id="characterStatus" role="status"></p>
     </section>
@@ -119,7 +138,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <label>キーワード検索<input id="cardSearch" type="search" placeholder="コーデ名・色・マイキャラ・姿・ブランド・メモ" autocomplete="off"></label>
       <div class="filterGrid">
         <label>マイキャラの姿<input id="appearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
-        <label>ブランド<input id="brandFilter" type="search" placeholder="ブランド名" autocomplete="off"></label>
+        <label>ブランド<input id="brandFilter" type="search" placeholder="例：Poppin' Heart、ポッピンハート" autocomplete="off"></label>
       </div>
       <p class="hint">検索条件を空欄にすると、登録済みのフレカをすべて表示します。</p>
     </section>
@@ -134,14 +153,14 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <section id="cardRegisterPanel" class="panel">
       <h3>フレカを登録</h3>
       <p class="hint">写真とQRコードは別々に保存されます。画像はJPEG・PNG・WebP、各10MBまで。</p>
-      <label>コーデ名 <span class="required">必須</span><input id="newCardName" maxlength="100" placeholder="例：オーロラキスコーデ"></label>
+      <label>コーデ名 <span class="required">必須</span><input id="newCardName" maxlength="100" placeholder="例：すきすきハートバズリウム" value=""></label>
       <label>色<input id="cardColor" maxlength="80" placeholder="例：水色、白"></label>
       <label>マイキャラ<select id="cardCharacter"><option value="">マイキャラを選択（任意）</option></select></label>
-      <label>マイキャラをこの場で新規登録（任意）<input id="newCharacterInline" maxlength="100" placeholder="未登録のマイキャラ名"></label>
+      <label>マイキャラをこの場で新規登録（任意）<input id="newCharacterInline" maxlength="100" placeholder="例：いのり"></label>
       <label>マイキャラの姿<input id="cardAppearance" maxlength="100" placeholder="例：通常、ツインテール、ボブ"></label>
-      <label>ブランド<input id="cardBrand" maxlength="100" placeholder="例：エンジェリーシュガー"></label>
-      <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存</span></label>
-      <label>フレンドコード（QRコード）の画像<input id="cardQr" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・写真とは別に保存</span></label>
+      <label>ブランド<input id="cardBrand" maxlength="100" placeholder="例：Poppin' Heart、ポッピンハート"></label>
+      <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択後に切り取り位置や拡大率を調整できます。</span></label>
+      <label>フレンドコード（QRコード）の画像<input id="cardQr" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・写真とは別に保存。QR全体が入るように切り取りできます。</span></label>
       <label>メモ（任意）<textarea id="cardMemo" rows="3" maxlength="1000" placeholder="自由にメモ"></textarea></label>
       <button id="addCard">フレカを登録</button><p id="cardRegisterStatus" role="status"></p>
     </section>
@@ -155,6 +174,14 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <section class="panel"><p>共有設定はプロフィールの公開状態を変更します。写真やQRコードはこの設定だけでは公開されません。</p><label class="switchrow"><input type="checkbox" id="publicToggle"> 図鑑を公開する</label><button id="savePublic">公開設定を保存</button><p id="shareStatus" role="status"></p><div id="shareLinkArea" class="hidden"><label>共有URL<input id="shareUrl" readonly></label><button id="copyShare">URLをコピー</button></div></section>
   </section>
 </main>
+<div id="cropModal" class="cropModal hidden" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
+  <div class="cropDialog"><h2 id="cropTitle">画像を切り取る</h2><p id="cropHelp" class="hint">拡大率と位置を調整してください。</p>
+    <div class="cropCanvasWrap"><canvas id="cropCanvas" width="900" height="1200"></canvas></div>
+    <div class="cropControls"><label>拡大率 <span id="cropZoomValue">1.0×</span><input id="cropZoom" type="range" min="1" max="3" step="0.05" value="1"></label>
+    <label>左右の位置<input id="cropX" type="range" min="0" max="100" value="50"></label><label>上下の位置<input id="cropY" type="range" min="0" max="100" value="50"></label></div>
+    <div class="cropActions"><button type="button" id="cancelCrop" class="secondary">キャンセル</button><button type="button" id="applyCrop">この範囲で使用</button></div>
+  </div>
+</div>
 <footer>アイプリ フレンドカード図鑑 ♡</footer>
 <script>
 (() => {
@@ -267,6 +294,41 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if (!$('signOut')) { const b=document.createElement('button'); b.id='signOut'; b.className='secondary'; b.textContent='ログアウト'; b.addEventListener('click',()=>runSafely(signOut)); $('home')?.prepend(b); }
   }
 
+  let cropState = null;
+  function drawCropPreview() {
+    if (!cropState) return;
+    const {img, ratio} = cropState, canvas=$('cropCanvas'), ctx=canvas.getContext('2d');
+    const zoom=Number($('cropZoom').value), px=Number($('cropX').value)/100, py=Number($('cropY').value)/100;
+    const targetW=900, targetH=Math.round(targetW/ratio); canvas.width=targetW; canvas.height=targetH;
+    let sw=img.naturalWidth/zoom, sh=img.naturalHeight/zoom;
+    if (sw/sh > ratio) sw=sh*ratio; else sh=sw/ratio;
+    const sx=(img.naturalWidth-sw)*px, sy=(img.naturalHeight-sh)*py;
+    ctx.clearRect(0,0,targetW,targetH); ctx.drawImage(img,sx,sy,sw,sh,0,0,targetW,targetH);
+    $('cropZoomValue').textContent=zoom.toFixed(2)+'×';
+  }
+  function openCropper(file, input) {
+    const reader=new FileReader(); reader.onload=()=>{
+      const img=new Image(); img.onload=()=>{
+        const isQr=input.id==='cardQr', ratio=isQr?1:0.75;
+        cropState={img,file,input,ratio}; $('cropTitle').textContent=isQr?'QRコード画像を切り取る':'コーデ写真を切り取る';
+        $('cropHelp').textContent=isQr?'QRコード全体と四隅が入るように調整してね。':'マイキャラがきれいに入るように、拡大率と位置を調整してね。';
+        $('cropZoom').value='1';$('cropX').value='50';$('cropY').value='50';$('cropModal').classList.remove('hidden');drawCropPreview();
+      }; img.onerror=()=>message('cardRegisterStatus','画像を読み込めませんでした。別の画像を選んでください。'); img.src=reader.result;
+    }; reader.readAsDataURL(file);
+  }
+  ['cropZoom','cropX','cropY'].forEach(id=>$(id).addEventListener('input',drawCropPreview));
+  ['cardPhoto','cardQr'].forEach(id=>$(id).addEventListener('change',e=>{const file=e.target.files?.[0];if(file){if(validImage(file,id==='cardQr'?'QRコード画像':'写真'))openCropper(file,e.target);else e.target.value='';}}));
+  $('cancelCrop').addEventListener('click',()=>{if(cropState)cropState.input.value='';cropState=null;$('cropModal').classList.add('hidden');});
+  $('applyCrop').addEventListener('click',()=>{
+    if(!cropState)return; const canvas=$('cropCanvas'),{file,input}=cropState;
+    canvas.toBlob(blob=>{if(!blob){message('cardRegisterStatus','切り取りに失敗しました。');return;}
+      const ext=blob.type==='image/jpeg'?'jpg':'png',name=(file.name.replace(/\.[^.]+$/,'')||'cropped')+'-cropped.'+ext;
+      const cropped=new File([blob],name,{type:blob.type||'image/png',lastModified:Date.now()});
+      const transfer=new DataTransfer();transfer.items.add(cropped);input.files=transfer.files;cropState=null;$('cropModal').classList.add('hidden');message('cardRegisterStatus','切り取り範囲を設定しました。登録するとこの画像が保存されます。');
+    },'image/jpeg',0.92);
+  });
+  $('cropModal').addEventListener('click',e=>{if(e.target===$('cropModal'))$('cancelCrop').click();});
+
   function getCardDataFields() {
     return { color:$('cardColor').value.trim(), appearance:$('cardAppearance').value.trim(), brand:$('cardBrand').value.trim(), memo:$('cardMemo').value.trim() };
   }
@@ -350,11 +412,15 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(error){console.warn('画像を読み込めませんでした',error.message);return null;} return data?.signedUrl || null;
   }
   function appendText(parent, tag, text, className) { const el=document.createElement(tag);el.textContent=escapeText(text);if(className)el.className=className;parent.appendChild(el);return el; }
-  async function renderCardMedia(container, data) {
-    const entries=[['photo_path','コーデ写真'],['qr_path','フレンドコードQR']].filter(([key])=>data?.[key]);
-    if(!entries.length)return;
-    const media=document.createElement('div');media.className='itemMedia';container.appendChild(media);
-    for(const [key,label] of entries){const url=await signedImageUrl(data[key]);if(!url)continue;const fig=document.createElement('figure');const img=document.createElement('img');img.src=url;img.alt=label;img.loading='lazy';fig.appendChild(img);appendText(fig,'figcaption',label);media.appendChild(fig);}
+  async function renderCardMedia(photoStage, qrStage, data) {
+    if (data?.photo_path) {
+      const url=await signedImageUrl(data.photo_path);
+      if(url){const img=document.createElement('img');img.src=url;img.alt='コーデ写真';img.loading='lazy';photoStage.replaceChildren(img);}
+    }
+    if (data?.qr_path) {
+      const url=await signedImageUrl(data.qr_path);
+      if(url){const img=document.createElement('img');img.src=url;img.alt='フレンドコードQR';img.loading='lazy';qrStage.replaceChildren(img);}
+    }
   }
   function renderCards() {
     const list=$('cardsList'); if(!list)return; list.replaceChildren();
@@ -374,18 +440,27 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(count)count.textContent=filtered.length+' 枚';
     if(!filtered.length){appendText(list,'p',cards.length?'条件に合うフレカがありません。':'フレカはまだ登録されていません。','muted');return;}
     filtered.forEach(card=>{
-      const item=document.createElement('article');item.className='item';const info=document.createElement('div');info.className='itemInfo';appendText(info,'strong',card.card_name);
       const d=card.card_data||{}, character=characters.find(c=>c.id===card.character_id);
-      appendText(info,'p','マイキャラ：'+(character?.character_name||'未設定'));
-      const tags=[['色',d.color],['姿',d.appearance],['ブランド',d.brand]].filter(([,v])=>v);
-      if(tags.length){const row=document.createElement('div');row.className='metaLine';tags.forEach(([label,value])=>appendText(row,'span',label+'：'+value,'metaTag'));info.appendChild(row);}
-      if(d.memo)appendText(info,'p',d.memo);
-      item.appendChild(info);
-      const del=document.createElement('button');del.className='danger';del.textContent='削除';del.addEventListener('click',()=>runSafely(async()=>{
+      const item=document.createElement('article');item.className='catalogueCard';
+      const title=appendText(item,'h3',card.card_name,'cardTitle');
+      const del=document.createElement('button');del.className='danger smallButton cardDelete';del.textContent='削除';del.addEventListener('click',()=>runSafely(async()=>{
         if(!confirm('「'+card.card_name+'」を削除しますか？'))return;
         const paths=[d.photo_path,d.qr_path].filter(Boolean); if(paths.length){const {error:storageError}=await client.storage.from(BUCKET).remove(paths);if(storageError)console.warn('画像ファイル削除エラー',storageError.message);}
         const {error}=await client.from('cards').delete().eq('id',card.id).eq('user_id',currentUser.id);if(error)throw error;message('cardRegisterStatus','フレカを削除しました。');await loadCards();
-      }));item.appendChild(del);list.appendChild(item);renderCardMedia(item,d).catch(console.error);
+      }));item.appendChild(del);
+      const photoStage=document.createElement('div');photoStage.className='photoStage';
+      const photoPlaceholder=document.createElement('div');photoPlaceholder.className='photoPlaceholder';photoPlaceholder.textContent='コーデ写真';photoStage.appendChild(photoPlaceholder);item.appendChild(photoStage);
+      const bottom=document.createElement('div');bottom.className='cardBottom';
+      const qrStage=document.createElement('div');qrStage.className='qrStage';
+      const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qrStage.appendChild(qrPlaceholder);bottom.appendChild(qrStage);
+      const details=document.createElement('div');details.className='cardDetails';
+      appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');
+      appendText(details,'div',(d.appearance||'姿未設定')+' ver.','appearanceName');
+      const tags=[['色',d.color],['ブランド',d.brand]].filter(([,v])=>v);
+      if(tags.length){const row=document.createElement('div');row.className='metaLine';tags.forEach(([label,value])=>appendText(row,'span',label+'：'+value,'metaTag'));details.appendChild(row);}
+      if(d.memo)appendText(details,'p',d.memo,'memo');
+      bottom.appendChild(details);item.appendChild(bottom);list.appendChild(item);
+      renderCardMedia(photoStage,qrStage,d).catch(console.error);
     });
   }
   async function loadCards() {
