@@ -61,6 +61,15 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     padding-bottom: 7px;
   }
 }
+
+/* Rebuilt search page: independent filters above an always-visible catalogue list. */
+#search .searchControls { margin-bottom: 10px; }
+#search .cataloguePanel { margin-top: 10px; }
+#search .filterGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#search .filterGrid label { min-width: 0; }
+#search .cataloguePanel h3 { margin: 0; }
+@media (max-width: 420px) { #search .filterGrid { grid-template-columns: 1fr; gap: 0; } }
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -102,18 +111,27 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     </section>
     <section class="panel"><div class="between"><h3>登録済みマイキャラ</h3><button class="secondary smallButton" data-go="characters">一覧を見る</button></div><div id="homeCharacterList" class="characterChips"><p class="muted">ログインすると表示されます。</p></div></section>
   </section>
-  <section id="cards" class="view hidden">
-    <div class="sectionHeading"><div><span class="eyebrow">MY FRIEND CARDS</span><h2>フレカ</h2></div><span class="pill">COLLECTION</span></div>
+  <section id="search" class="view hidden">
+    <div class="sectionHeading"><div><span class="eyebrow">MY FRIEND CARDS</span><h2>フレカ検索</h2></div><span class="pill">COLLECTION</span></div>
     <div id="characterChips" class="characterChips" aria-label="マイキャラで絞り込み"></div>
-    <div class="subTabs"><button id="searchTab" class="active">フレカ検索</button><button id="registerTab">フレカ登録</button></div>
-    <section id="cardSearchPanel" class="panel">
+    <section id="cardSearchPanel" class="panel searchControls">
+      <div class="between"><h3>図鑑を検索・絞り込み</h3><button type="button" id="clearCardSearch" class="secondary smallButton">条件クリア</button></div>
       <label>キーワード検索<input id="cardSearch" type="search" placeholder="コーデ名・色・マイキャラ・姿・ブランド・メモ" autocomplete="off"></label>
-      <label>マイキャラの姿で絞り込む<input id="appearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
-      <label>ブランドで絞り込む<input id="brandFilter" type="search" placeholder="ブランド名" autocomplete="off"></label>
-      <p class="hint">入力した条件に一致するフレカを表示します。マイキャラ名は上の横並びボタンから選べます。</p>
+      <div class="filterGrid">
+        <label>マイキャラの姿<input id="appearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
+        <label>ブランド<input id="brandFilter" type="search" placeholder="ブランド名" autocomplete="off"></label>
+      </div>
+      <p class="hint">検索条件を空欄にすると、登録済みのフレカをすべて表示します。</p>
+    </section>
+    <section id="cardCataloguePanel" class="panel cataloguePanel" aria-live="polite">
+      <div class="between"><h3>フレカ図鑑</h3><span id="searchResultCount" class="pill">0 枚</span></div>
       <div id="cardsList" class="itemList"><p class="muted">ログインするとフレカを表示できます。</p></div>
     </section>
-    <section id="cardRegisterPanel" class="panel hidden">
+
+  </section>
+    <section id="register" class="view hidden">
+    <div class="sectionHeading"><div><span class="eyebrow">ADD A FRIEND CARD</span><h2>フレカ登録</h2></div></div>
+    <section id="cardRegisterPanel" class="panel">
       <h3>フレカを登録</h3>
       <p class="hint">写真とQRコードは別々に保存されます。画像はJPEG・PNG・WebP、各10MBまで。</p>
       <label>コーデ名 <span class="required">必須</span><input id="newCardName" maxlength="100" placeholder="例：オーロラキスコーデ"></label>
@@ -128,7 +146,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <button id="addCard">フレカを登録</button><p id="cardRegisterStatus" role="status"></p>
     </section>
   </section>
-  <section id="characters" class="view hidden">
+    <section id="characters" class="view hidden">
     <div class="sectionHeading"><div><span class="eyebrow">MY CHARACTERS</span><h2>マイキャラ</h2></div></div>
     <section class="panel"><h3>マイキャラ一覧</h3><p class="hint">同じキャラに複数の姿がある場合は、フレカごとに「マイキャラの姿」を登録できます。</p><div id="charsList" class="itemList"></div></section>
   </section>
@@ -157,27 +175,12 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 
   function showView(viewName) {
     document.querySelectorAll('.view').forEach(view => view.classList.toggle('hidden', view.id !== viewName));
-    const selectedNav = viewName === 'cards' ? (document.getElementById('cardRegisterPanel') && !document.getElementById('cardRegisterPanel').classList.contains('hidden') ? 'register' : 'search') : viewName;
-    document.querySelectorAll('.tabs button').forEach(button => button.classList.toggle('active', button.dataset.nav === selectedNav));
+    document.querySelectorAll('.tabs button').forEach(button => button.classList.toggle('active', button.dataset.nav === viewName));
     window.scrollTo({ top: 0, behavior: 'auto' });
+    if (viewName === 'search') renderCards();
   }
-  function showMainTab(tab) {
-    if (tab === 'search' || tab === 'register') {
-      showCardTab(tab);
-      showView('cards');
-      document.querySelectorAll('.tabs button').forEach(button => button.classList.toggle('active', button.dataset.nav === tab));
-      return;
-    }
-    showView(tab);
-  }
-  function showCardTab(tab) {
-    const searching = tab === 'search';
-    $('cardSearchPanel')?.classList.toggle('hidden', !searching);
-    $('cardRegisterPanel')?.classList.toggle('hidden', searching);
-    $('searchTab')?.classList.toggle('active', searching);
-    $('registerTab')?.classList.toggle('active', !searching);
-    document.querySelectorAll('.tabs button').forEach(button => button.classList.toggle('active', button.dataset.nav === (searching ? 'search' : 'register')));
-  }
+  // Each bottom-tab item opens exactly one independent page section.
+  function showMainTab(tab) { showView(tab); }
   function runSafely(task) {
     return Promise.resolve().then(task).catch(error => {
       console.error(error);
@@ -192,8 +195,6 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   $('dismissNotice')?.addEventListener('click', () => notice?.classList.add('hidden'));
   document.querySelectorAll('.tabs button').forEach(button => button.addEventListener('click', () => showMainTab(button.dataset.nav)));
   document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => showView(button.dataset.go)));
-  $('searchTab')?.addEventListener('click', () => showCardTab('search'));
-  $('registerTab')?.addEventListener('click', () => showCardTab('register'));
 
   $('url').value = localStorage.getItem('aipri_url') || '';
   $('key').value = localStorage.getItem('aipri_key') || '';
@@ -308,7 +309,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
         if (updateError) throw updateError;
       }
       ['newCardName','cardColor','newCharacterInline','cardAppearance','cardBrand','cardMemo','cardPhoto','cardQr'].forEach(id=>{ if ($(id)) $(id).value=''; }); $('cardCharacter').value='';
-      message('cardRegisterStatus','フレカを登録しました！'); await loadCards(); showCardTab('search');
+      message('cardRegisterStatus','フレカを登録しました！'); await loadCards(); showView('search');
     } catch(error) {
       message('cardRegisterStatus','登録中にエラー：'+error.message + (insertedCard ? ' カード情報が登録済みの場合があります。一覧を確認してください。' : ''));
       if (insertedCard) await loadCards();
@@ -339,7 +340,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
         characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);b.addEventListener('click',()=>{activeCharacter=c.id;renderCharacterChips();renderCards();});container.appendChild(b);});
       } else {
         if (!characters.length) { const p=document.createElement('p');p.className='muted';p.textContent='マイキャラはまだ登録されていません。';container.appendChild(p); }
-        characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.addEventListener('click',()=>{showView('cards');activeCharacter=c.id;renderCharacterChips();renderCards();});container.appendChild(b);});
+        characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.addEventListener('click',()=>{activeCharacter=c.id;showView('search');renderCharacterChips();renderCards();});container.appendChild(b);});
       }
     });
   }
@@ -357,7 +358,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   }
   function renderCards() {
     const list=$('cardsList'); if(!list)return; list.replaceChildren();
-    if(!currentUser){appendText(list,'p','ログインするとフレカを表示できます。','muted');return;}
+    const count=$('searchResultCount');
+    if(!currentUser){if(count)count.textContent='— 枚';appendText(list,'p','ログインするとフレカを表示できます。','muted');return;}
     const keyword=($('cardSearch')?.value||'').trim().toLocaleLowerCase();
     const appearanceFilter=($('appearanceFilter')?.value||'').trim().toLocaleLowerCase();
     const brandFilter=($('brandFilter')?.value||'').trim().toLocaleLowerCase();
@@ -369,6 +371,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       const matchesBrand=!brandFilter || String(d.brand||'').toLocaleLowerCase().includes(brandFilter);
       return matchesKeyword && matchesAppearance && matchesBrand && (activeCharacter==='all'||card.character_id===activeCharacter);
     });
+    if(count)count.textContent=filtered.length+' 枚';
     if(!filtered.length){appendText(list,'p',cards.length?'条件に合うフレカがありません。':'フレカはまだ登録されていません。','muted');return;}
     filtered.forEach(card=>{
       const item=document.createElement('article');item.className='item';const info=document.createElement('div');info.className='itemInfo';appendText(info,'strong',card.card_name);
@@ -436,6 +439,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   $('addCard')?.addEventListener('click',()=>runSafely(addCard));
   $('addChar')?.addEventListener('click',()=>runSafely(addCharacter));
   $('savePublic')?.addEventListener('click',()=>runSafely(savePublic));
+  $('clearCardSearch')?.addEventListener('click',()=>{ $('cardSearch').value=''; $('appearanceFilter').value=''; $('brandFilter').value=''; activeCharacter='all'; renderCharacterChips(); renderCards(); });
   $('cardSearch')?.addEventListener('input',renderCards);
   $('appearanceFilter')?.addEventListener('input',renderCards);
   $('brandFilter')?.addEventListener('input',renderCards);
@@ -450,7 +454,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     try{const response=await fetch(url+'/auth/v1/health',{headers:{apikey:key},cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);client=null;bootPromise=null;await boot();message('dbState','接続OK');message('status','接続できました。');settings.classList.add('hidden');notice?.classList.add('hidden');}
     catch(error){message('dbState','要確認');message('status','接続失敗：'+(error?.message||error));}
   });
-  showCardTab('search');showView(new URLSearchParams(location.search).has('share')?'share':'home');
+  showView(new URLSearchParams(location.search).has('share')?'share':'home');
   if(localStorage.getItem('aipri_url')&&localStorage.getItem('aipri_key'))boot().catch(error=>{console.error(error);message('authStatus','初期化エラー：'+(error?.message||error));});
 })();
 
