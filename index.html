@@ -141,6 +141,16 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 .cropCanvasWrap canvas:active { cursor:grabbing; }
 @media(max-width:360px){ #cardsList{gap:7px}.catalogueCard{padding:7px}.catalogueCard .cardBottom{gap:4px} }
 
+
+/* Registration area: switch between adding and managing cards; collapsible management filters. */
+.registerModeTabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.registerModeTabs button{background:#fff;border:1px solid var(--line);box-shadow:none;color:#5e91a8}
+.registerModeTabs button.active{background:#dff5ff;border-color:#8ed5f0;color:#236f90}
+#registeredCardsPanel .manageSearchPanel{margin:0 0 12px;padding:12px 14px;box-shadow:none;background:#fbfeff}
+#registeredCardsPanel .manageSearchPanel[open] .searchSummary{margin-bottom:10px}
+#registeredCardsPanel .manageSearchPanel .filterGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:420px){#registeredCardsPanel .manageSearchPanel .filterGrid{grid-template-columns:1fr;gap:0}}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -201,8 +211,12 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 
   </section>
     <section id="register" class="view hidden">
-    <div class="sectionHeading"><div><span class="eyebrow">ADD A FRIEND CARD</span><h2>フレカ登録</h2></div></div>
-    <section id="cardRegisterPanel" class="panel">
+    <div class="sectionHeading"><div><span class="eyebrow">ADD A FRIEND CARD</span><h2>フレカ登録・編集</h2></div></div>
+    <div class="registerModeTabs" role="tablist" aria-label="フレカ登録と編集の切り替え">
+      <button type="button" id="registerModeAdd" class="active" role="tab" aria-selected="true">＋ フレカ登録</button>
+      <button type="button" id="registerModeManage" role="tab" aria-selected="false">✎ フレカ編集</button>
+    </div>
+    <section id="cardRegisterPanel" class="panel registerModePanel">
       <h3>フレカを登録</h3>
       <p class="hint">写真とQRコードは別々に保存されます。画像はJPEG・PNG・WebP、各10MBまで。</p>
       <label>コーデ名 <span class="required">必須</span><input id="newCardName" maxlength="100" placeholder="例：すきすきハートバズリウム" value=""></label>
@@ -216,15 +230,18 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <label>メモ（任意）<textarea id="cardMemo" rows="3" maxlength="1000" placeholder="自由にメモ"></textarea></label>
       <button id="addCard">フレカを登録</button><button type="button" id="cancelCardEdit" class="secondary hidden">編集をキャンセル</button><p id="cardRegisterStatus" role="status"></p>
     </section>
-    <section id="registeredCardsPanel" class="panel">
-      <div class="between"><h3>登録済みフレカの編集・削除</h3><span id="manageCardCount" class="pill">0 枚</span></div>
-      <p class="hint">登録したフレカはここから内容の編集・削除ができます。</p>
-      <label>キーワード検索<input id="manageCardSearch" type="search" placeholder="コーデ名・色・マイキャラ・メモ" autocomplete="off"></label>
-      <div class="filterGrid">
-        <label>マイキャラ<select id="manageCardCharacterFilter"><option value="">すべてのマイキャラ</option></select></label>
-        <label>コーデの弾数<select id="manageCardSeriesFilter"><option value="">すべての弾数</option><option value="1弾">1弾</option><option value="2弾">2弾</option><option value="3弾">3弾</option><option value="4弾">4弾</option><option value="5弾">5弾</option><option value="6弾">6弾</option><option value="7弾">7弾</option><option value="8弾">8弾</option><option value="9弾">9弾</option><option value="10弾">10弾</option><option value="プリマジ">プリマジ</option><option value="その他">その他</option></select></label>
-      </div>
-      <label>マイキャラの姿<input id="manageCardAppearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
+    <section id="registeredCardsPanel" class="panel registerModePanel hidden">
+      <div class="between"><h3>登録済みフレカ</h3><span id="manageCardCount" class="pill">0 枚</span></div>
+      <p class="hint">編集したいフレカの「編集」を押してね。削除もここからできます。</p>
+      <details id="manageCardSearchPanel" class="panel manageSearchPanel">
+        <summary class="searchSummary"><span>フレカを検索・絞り込み</span><span class="summaryHint">タップして開閉</span></summary>
+        <label>キーワード検索<input id="manageCardSearch" type="search" placeholder="コーデ名・色・マイキャラ・姿・弾数・メモ" autocomplete="off"></label>
+        <div class="filterGrid">
+          <label>マイキャラ<select id="manageCardCharacterFilter"><option value="">すべてのマイキャラ</option></select></label>
+          <label>コーデの弾数<select id="manageCardSeriesFilter"><option value="">すべての弾数</option><option value="1弾">1弾</option><option value="2弾">2弾</option><option value="3弾">3弾</option><option value="4弾">4弾</option><option value="5弾">5弾</option><option value="6弾">6弾</option><option value="7弾">7弾</option><option value="8弾">8弾</option><option value="9弾">9弾</option><option value="10弾">10弾</option><option value="プリマジ">プリマジ</option><option value="その他">その他</option></select></label>
+        </div>
+        <label>マイキャラの姿<input id="manageCardAppearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
+      </details>
       <div id="registeredCardsList" class="itemList"><p class="muted">ログインすると登録済みフレカが表示されます。</p></div>
     </section>
   </section>
@@ -268,6 +285,16 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     window.scrollTo({ top: 0, behavior: 'auto' });
     if (viewName === 'search') renderCards();
     if (viewName === 'register') renderManageCards();
+  }
+  function setRegisterMode(mode) {
+    const editing = mode === 'manage';
+    $('cardRegisterPanel')?.classList.toggle('hidden', editing);
+    $('registeredCardsPanel')?.classList.toggle('hidden', !editing);
+    $('registerModeAdd')?.classList.toggle('active', !editing);
+    $('registerModeManage')?.classList.toggle('active', editing);
+    $('registerModeAdd')?.setAttribute('aria-selected', String(!editing));
+    $('registerModeManage')?.setAttribute('aria-selected', String(editing));
+    if (editing) renderManageCards();
   }
   function showMainTab(tab) { showView(tab); }
   function runSafely(task) {
@@ -475,6 +502,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     $('cardCharacter').value='';editingCardId=null;$('addCard').textContent='フレカを登録';$('cancelCardEdit').classList.add('hidden');
   }
   function beginEditCard(card){
+    setRegisterMode('add');
     const d=card.card_data||{};editingCardId=card.id;$('newCardName').value=card.card_name||'';$('cardColor').value=d.color||'';$('cardCharacter').value=card.character_id||'';$('newCharacterInline').value='';$('cardAppearance').value=d.appearance||'';$('cardSeries').value=SERIES.includes(d.series)?d.series:'';$('cardMemo').value=d.memo||'';$('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');$('cardRegisterPanel').scrollIntoView({behavior:'smooth',block:'start'});message('cardRegisterStatus','編集モードです。写真・QRを選び直さなければ現在の画像を維持します。');
   }
   async function addCard(){
@@ -642,6 +670,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   $('addChar')?.addEventListener('click',()=>runSafely(addCharacter));
   $('savePublic')?.addEventListener('click',()=>runSafely(savePublic));
   $('cancelCardEdit')?.addEventListener('click',()=>{resetCardForm();message('cardRegisterStatus','編集をキャンセルしました。');});
+  $('registerModeAdd')?.addEventListener('click',()=>setRegisterMode('add'));
+  $('registerModeManage')?.addEventListener('click',()=>setRegisterMode('manage'));
   $('cardSearch')?.addEventListener('input',renderCards);
   $('appearanceFilter')?.addEventListener('input',renderCards);
   $('seriesFilter')?.addEventListener('change',renderCards);
@@ -658,6 +688,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     try{const response=await fetch(url+'/auth/v1/health',{headers:{apikey:key},cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);client=null;bootPromise=null;await boot();message('dbState','接続OK');message('status','接続できました。');settings.classList.add('hidden');notice?.classList.add('hidden');}
     catch(error){message('dbState','要確認');message('status','接続失敗：'+(error?.message||error));}
   });
+  setRegisterMode('add');
   showView(new URLSearchParams(location.search).has('share')?'share':'home');
   if(localStorage.getItem('aipri_url')&&localStorage.getItem('aipri_key'))boot().catch(error=>{console.error(error);message('authStatus','初期化エラー：'+(error?.message||error));});
 })();
