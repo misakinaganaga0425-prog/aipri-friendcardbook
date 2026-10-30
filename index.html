@@ -342,7 +342,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   const $ = id => document.getElementById(id);
   const main = document.querySelector('main');
   const settings = $('settings');
-  const pathParts = location.pathname.split('/').filter(Boolean);\n  const pathShareSlug = pathParts[0] === 's' && pathParts[1] ? decodeURIComponent(pathParts[1]) : '';\n  const queryShareSlug = new URLSearchParams(location.search).get('share') || '';\n  const activeShareSlug = pathShareSlug || queryShareSlug;\n  const shareViewerMode = !!activeShareSlug;
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const pathShareSlug = pathParts[0] === 's' && pathParts[1] ? decodeURIComponent(pathParts[1]) : '';
+  const queryShareSlug = new URLSearchParams(location.search).get('share') || '';
+  const activeShareSlug = pathShareSlug || queryShareSlug;
+  const shareViewerMode = !!activeShareSlug;
   if (shareViewerMode) {
     $('settingsToggle')?.classList.add('hidden');
     settings?.classList.add('hidden');
