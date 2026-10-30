@@ -104,6 +104,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 
 
 
+.cardVisibilityToggle{font-size:12px;font-weight:700;gap:7px;margin:8px 0 0;color:var(--theme-accent,var(--deep));}.cardVisibilityToggle input{width:17px;height:17px;flex:none;}
 /* Search results: two cards per row; display only the visual card fields. */
 #cardsList { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 .catalogueCard { gap:8px; padding:10px; border-radius:17px; }
@@ -266,6 +267,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択後に切り取り位置や拡大率を調整できます。</span></label>
       <label>フレンドコード（QRコード）の画像<input id="cardQr" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・写真とは別に保存。QR全体が入るように切り取りできます。</span></label>
       <label>メモ（任意）<textarea id="cardMemo" rows="3" maxlength="1000" placeholder="自由にメモ"></textarea></label>
+      <label class="switchrow"><input id="cardPublicToggle" type="checkbox"> このフレカを共有ページに公開する</label><p class="hint">OFFにすると、このフレカは共有ページに表示されません。あとから変更できます。</p>
       <button id="addCard">フレカを登録</button><button type="button" id="cancelCardEdit" class="secondary hidden">編集をキャンセル</button><p id="cardRegisterStatus" role="status"></p>
     </section>
     <section id="registeredCardsPanel" class="panel registerModePanel hidden">
@@ -305,9 +307,9 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <p id="sharedStatus" role="status" class="muted"></p>
     </section>
     <section id="shareAdminPanel" class="panel">
-      <h3>図鑑の公開設定</h3>
-      <label class="switchrow"><input type="checkbox" id="publicToggle"> 図鑑を公開する</label>
-      <p class="hint">ONにすると、このアカウントに登録されているフレカ図鑑全体が共有リンクから閲覧できます。OFFにすると共有リンクから見られなくなります。</p>
+      <h3>共有リンクの設定</h3>
+      <label class="switchrow"><input type="checkbox" id="publicToggle"> 共有リンクを有効にする</label>
+      <p class="hint">これは共有URL自体の有効・無効を切り替える設定です。フレカを公開するかどうかは、各フレカの登録・編集画面や検索画面で1枚ずつ設定できます。公開OFFのフレカは共有ページに表示されません。</p>
       <p id="shareStatus" role="status"></p>
       <div id="shareLinkArea" class="hidden"><label>共有URL<input id="shareUrl" readonly></label><button id="copyShare">URLをコピー</button></div>
     </section>
@@ -586,11 +588,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   let editingCardId=null;
   function resetCardForm(){
     ['newCardName','cardColor','newCharacterInline','cardAppearance','cardSeries','cardMemo','cardPhoto','cardQr'].forEach(id=>{if($(id))$(id).value='';});
-    $('cardCharacter').value='';editingCardId=null;$('addCard').textContent='フレカを登録';$('cancelCardEdit').classList.add('hidden');
+    $('cardPublicToggle').checked=false;$('cardCharacter').value='';editingCardId=null;$('addCard').textContent='フレカを登録';$('cancelCardEdit').classList.add('hidden');
   }
   function beginEditCard(card){
     setRegisterMode('add');
-    const d=card.card_data||{};editingCardId=card.id;$('newCardName').value=card.card_name||'';$('cardColor').value=d.color||'';$('cardCharacter').value=card.character_id||'';$('newCharacterInline').value='';$('cardAppearance').value=d.appearance||'';$('cardSeries').value=d.series||'';$('cardMemo').value=d.memo||'';$('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');$('cardRegisterPanel').scrollIntoView({behavior:'smooth',block:'start'});message('cardRegisterStatus','編集モードです。写真・QRを選び直さなければ現在の画像を維持します。');
+    const d=card.card_data||{};editingCardId=card.id;$('newCardName').value=card.card_name||'';$('cardColor').value=d.color||'';$('cardCharacter').value=card.character_id||'';$('newCharacterInline').value='';$('cardAppearance').value=d.appearance||'';$('cardSeries').value=d.series||'';$('cardMemo').value=d.memo||'';$('cardPublicToggle').checked=card.is_public!==false;$('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');$('cardRegisterPanel').scrollIntoView({behavior:'smooth',block:'start'});message('cardRegisterStatus','編集モードです。写真・QRを選び直さなければ現在の画像を維持します。');
   }
   async function addCard(){
     if(!currentUser)return message('cardRegisterStatus','先にホームでログインしてください。');
@@ -603,8 +605,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       const oldCard=cards.find(c=>c.id===cardId);if(isEdit&&!oldCard)throw new Error('編集するフレカが見つかりません。');
       const oldData=oldCard?.card_data||{};
       const fields={...getCardDataFields(),brand:oldData.brand||'',photo_path:oldData.photo_path||null,qr_path:oldData.qr_path||null};
-      if(isEdit){const {error}=await client.from('cards').update({card_name:name,card_data:fields,character_id:characterId}).eq('id',cardId).eq('user_id',currentUser.id);if(error)throw error;}
-      else{const {data,error}=await client.from('cards').insert({user_id:currentUser.id,card_name:name,card_data:fields,character_id:characterId}).select('id').single();if(error)throw error;cardId=data.id;}
+      if(isEdit){const {error}=await client.from('cards').update({card_name:name,card_data:fields,character_id:characterId,is_public:$('cardPublicToggle').checked}).eq('id',cardId).eq('user_id',currentUser.id);if(error)throw error;}
+      else{const {data,error}=await client.from('cards').insert({user_id:currentUser.id,card_name:name,card_data:fields,character_id:characterId,is_public:$('cardPublicToggle').checked}).select('id').single();if(error)throw error;cardId=data.id;}
       const newPhotoPath=photo?await uploadCardImage(cardId,photo,'outfit-photo'):fields.photo_path,newQrPath=qr?await uploadCardImage(cardId,qr,'friend-qr'):fields.qr_path;
       if(photo||qr){const updated={...getCardDataFields(),brand:oldData.brand||'',photo_path:newPhotoPath,qr_path:newQrPath};const {error}=await client.from('cards').update({card_data:updated}).eq('id',cardId).eq('user_id',currentUser.id);if(error)throw error;}
       resetCardForm();message('cardRegisterStatus',isEdit?'フレカを更新しました！':'フレカを登録しました！');await loadCards();await loadCharacters();if(!isEdit)showView('search');
@@ -687,9 +689,22 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       const photoStage=document.createElement('div');photoStage.className='photoStage';const photoPlaceholder=document.createElement('div');photoPlaceholder.className='photoPlaceholder';photoPlaceholder.textContent='コーデ写真';photoStage.appendChild(photoPlaceholder);item.appendChild(photoStage);
       const bottom=document.createElement('div');bottom.className='cardBottom';const qrStage=document.createElement('div');qrStage.className='qrStage';
       const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qrStage.appendChild(qrPlaceholder);bottom.appendChild(qrStage);
-      const details=document.createElement('div');details.className='cardDetails';appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');appendText(details,'div',(d.appearance||'姿未設定')+' ver.','appearanceName');bottom.appendChild(details);item.appendChild(bottom);list.appendChild(item);
+      const details=document.createElement('div');details.className='cardDetails';appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');appendText(details,'div',(d.appearance||'姿未設定')+' ver.','appearanceName');bottom.appendChild(details);item.appendChild(bottom);
+      const visibility=document.createElement('label');visibility.className='switchrow cardVisibilityToggle';const check=document.createElement('input');check.type='checkbox';check.checked=card.is_public!==false;check.addEventListener('change',()=>setCardVisibility(card,check.checked,check));visibility.append(check,document.createTextNode('共有ページに公開'));item.appendChild(visibility);list.appendChild(item);
       renderCardMedia(photoStage,qrStage,d).catch(console.error);
     });
+  }
+  async function setCardVisibility(card,isPublic,checkbox){
+    if(!currentUser){if(checkbox)checkbox.checked=!isPublic;return message('cardRegisterStatus','先にログインしてください。');}
+    if(checkbox)checkbox.disabled=true;
+    try{
+      const {error}=await client.from('cards').update({is_public:isPublic}).eq('id',card.id).eq('user_id',currentUser.id);
+      if(error)throw error;
+      card.is_public=isPublic;
+      message('cardRegisterStatus',isPublic?'このフレカを共有ページに公開しました。':'このフレカを共有ページで非公開にしました。');
+      renderCards();renderManageCards();
+    }catch(error){if(checkbox)checkbox.checked=!isPublic;message('cardRegisterStatus','公開設定の保存に失敗しました：'+error.message);}
+    finally{if(checkbox)checkbox.disabled=false;}
   }
   function renderManageCards(){
     const list=$('registeredCardsList');if(!list)return;list.replaceChildren();
@@ -706,6 +721,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     filtered.forEach(card=>{
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),item=document.createElement('article');item.className='item';
       const info=document.createElement('div');info.className='itemInfo';appendText(info,'strong',card.card_name,'');appendText(info,'p',(character?.character_name||'マイキャラ未設定')+' ・ '+(d.appearance||'姿未設定')+' ・ '+(d.series||'弾数未設定'),'');
+      const visibility=document.createElement('label');visibility.className='switchrow cardVisibilityToggle';const check=document.createElement('input');check.type='checkbox';check.checked=card.is_public!==false;check.addEventListener('change',()=>setCardVisibility(card,check.checked,check));visibility.append(check,document.createTextNode('共有ページに公開'));info.appendChild(visibility);
       const actions=document.createElement('div');actions.className='manageActions';
       const edit=document.createElement('button');edit.className='secondary';edit.textContent='編集';edit.addEventListener('click',()=>beginEditCard(card));
       const del=document.createElement('button');del.className='danger';del.textContent='削除';del.addEventListener('click',()=>runSafely(async()=>{
@@ -719,7 +735,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   }
   async function loadCards(){
     if(!client||!currentUser)return;
-    const {data,error}=await client.from('cards').select('id,card_name,card_data,character_id,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false});
+    const {data,error}=await client.from('cards').select('id,card_name,card_data,character_id,is_public,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false});
     if(error){message('cardRegisterStatus','読み込みエラー：'+error.message);return;}
     cards=data||[];message('cardCount',String(cards.length));updateSeriesFilterOptions();renderCards();renderManageCards();
   }
@@ -798,7 +814,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(profile.theme_palette)applyThemePalette(profile.theme_palette);
     $('shareOwnerName').textContent=profile.display_name ? profile.display_name+' さんのフレカ図鑑' : 'フレカ図鑑';
     const [cardResult,charResult]=await Promise.all([
-      client.from('cards').select('id,card_name,card_data,character_id,created_at').eq('user_id',profile.id).order('created_at',{ascending:false}),
+      client.from('cards').select('id,card_name,card_data,character_id,is_public,created_at').eq('user_id',profile.id).eq('is_public',true).order('created_at',{ascending:false}),
       client.from('my_characters').select('id,character_name,character_data,created_at').eq('user_id',profile.id).order('created_at',{ascending:false})
     ]);
     if(cardResult.error)throw new Error('フレカを取得できません：'+cardResult.error.message);
