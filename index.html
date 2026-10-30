@@ -930,8 +930,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(manifest.user_id!==currentUser.id)throw new Error('別のユーザーのバックアップです。元のアカウントでログインしてください。');
     for(const asset of manifest.assets){
       const file=zip.file(asset.filename);if(!file)throw new Error('画像ファイルが不足しています：'+asset.filename);
-      const fileBlob=await file.async('blob');
-      const ext=(asset.path.split('.').pop()||'').toLowerCase(),mime=ext==='png'?'image/png':ext==='webp'?'image/webp':'image/jpeg';
+      const ext=(asset.path.split('.').pop()||'').toLowerCase();
+      const mime=ext==='png'?'image/png':ext==='webp'?'image/webp':(ext==='jpg'||ext==='jpeg')?'image/jpeg':ext==='gif'?'image/gif':ext==='heic'?'image/heic':'application/octet-stream';
+      // JSZip extracts files as application/octet-stream; explicitly re-wrap with the original image MIME.
+      const bytes=await file.async('uint8array');
+      const fileBlob=new Blob([bytes],{type:mime});
       const {error}=await client.storage.from(BUCKET).upload(asset.path,fileBlob,{upsert:true,contentType:mime});
       if(error)throw new Error('画像の復元に失敗しました：'+asset.path+' / '+error.message);
     }
