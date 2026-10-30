@@ -754,7 +754,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     const status=$('sharedStatus'); if(status)status.textContent='図鑑を読み込んでいます…';
     const slug=new URLSearchParams(location.search).get('share');
     if(!slug)throw new Error('共有リンクが正しくありません。');
-    const url='https://lldeduccsqvstqfjexm.supabase.co';
+    const url='https://lldeduccsqzvstqfjexm.supabase.co';
     const key='sb_publishable_lx1lacFLektj2cAfzAP64A_7tEPd69A';
     await loadSupabaseLibrary();
     client=window.supabase.createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
