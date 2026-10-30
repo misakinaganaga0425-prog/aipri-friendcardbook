@@ -184,6 +184,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body>
 <header class="siteHeader">
@@ -198,6 +199,19 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <label>Publishable key<input id="key" type="password" placeholder="sb_publishable_..."></label>
     <p class="hint">Secret / service_role keyは入力しないでください。</p>
     <div class="buttonRow"><button id="save">保存して接続確認</button><button id="clear" class="secondary">消去</button></div><p id="status" role="status"></p>
+    <section class="panel" id="backupPanel">
+      <h3>バックアップ・復元</h3>
+      <p class="hint">フレカ・マイキャラ・写真・QR画像をまとめて保存します。iPhoneに保存するバックアップと、Supabaseに保存するクラウドバックアップに対応します。</p>
+      <div class="buttonRow">
+        <button type="button" id="downloadBackup">端末にバックアップ</button>
+        <button type="button" id="cloudBackup" class="secondary">クラウドに保存</button>
+      </div>
+      <label>バックアップファイルから復元<input type="file" id="restoreBackupFile" accept=".zip,application/zip"></label>
+      <button type="button" id="restoreBackup" class="secondary">選択したファイルから復元</button>
+      <div class="buttonRow"><button type="button" id="restoreCloudBackup" class="secondary">最新のクラウドバックアップから復元</button></div>
+      <p id="backupStatus" class="hint" role="status"></p>
+      <p class="hint">復元は既存データを削除せず、同じIDのデータを更新・不足分を追加する方式です。復元前に現在のデータもバックアップすることをおすすめします。</p>
+    </section>
   </section>
   <nav class="tabs" aria-label="メインメニュー">
     <button class="active" data-nav="home">⌂<small>ホーム</small></button>
@@ -366,7 +380,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     applyThemePalette(e.target.value);
     if (currentUser && client) runSafely(async () => {
       const {error}=await client.from('profiles').update({theme_palette:e.target.value}).eq('id',currentUser.id);
-      if(error) throw error;
+      if(error) throw error;scheduleCloudBackup();
     });
   });
 
@@ -609,7 +623,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       else{const {data,error}=await client.from('cards').insert({user_id:currentUser.id,card_name:name,card_data:fields,character_id:characterId,is_public:$('cardPublicToggle').checked}).select('id').single();if(error)throw error;cardId=data.id;}
       const newPhotoPath=photo?await uploadCardImage(cardId,photo,'outfit-photo'):fields.photo_path,newQrPath=qr?await uploadCardImage(cardId,qr,'friend-qr'):fields.qr_path;
       if(photo||qr){const updated={...getCardDataFields(),brand:oldData.brand||'',photo_path:newPhotoPath,qr_path:newQrPath};const {error}=await client.from('cards').update({card_data:updated}).eq('id',cardId).eq('user_id',currentUser.id);if(error)throw error;}
-      resetCardForm();message('cardRegisterStatus',isEdit?'フレカを更新しました！':'フレカを登録しました！');await loadCards();await loadCharacters();if(!isEdit)showView('search');
+      resetCardForm();message('cardRegisterStatus',isEdit?'フレカを更新しました！':'フレカを登録しました！');scheduleCloudBackup();await loadCards();await loadCharacters();if(!isEdit)showView('search');
     }catch(error){message('cardRegisterStatus',(isEdit?'更新':'登録')+'中にエラー：'+error.message);await loadCards();}finally{$('addCard').disabled=false;}
   }
   async function addCharacter(){
@@ -618,7 +632,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(!name)return message('characterStatus','マイキャラ名を入力してください。');
     const {error}=await client.from('my_characters').insert({user_id:currentUser.id,character_name:name,character_data:{memo}});
     if(error)return message('characterStatus','登録エラー：'+error.message);
-    $('newCharName').value='';$('characterMemo').value='';message('characterStatus','マイキャラを登録しました！');await loadCharacters();
+    $('newCharName').value='';$('characterMemo').value='';message('characterStatus','マイキャラを登録しました！');scheduleCloudBackup();await loadCharacters();
   }
   function updateCharacterOptions(){
     const selector=$('cardCharacter');if(!selector)return;const old=selector.value;selector.replaceChildren();
@@ -700,7 +714,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     try{
       const {error}=await client.from('cards').update({is_public:isPublic}).eq('id',card.id).eq('user_id',currentUser.id);
       if(error)throw error;
-      card.is_public=isPublic;
+      card.is_public=isPublic;scheduleCloudBackup();
       message('cardRegisterStatus',isPublic?'このフレカを共有ページに公開しました。':'このフレカを共有ページで非公開にしました。');
       renderCards();renderManageCards();
     }catch(error){if(checkbox)checkbox.checked=!isPublic;message('cardRegisterStatus','公開設定の保存に失敗しました：'+error.message);}
@@ -728,7 +742,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
         if(!confirm('「'+card.card_name+'」を削除しますか？'))return;
         const paths=[d.photo_path,d.qr_path].filter(Boolean);if(paths.length){const {error}=await client.storage.from(BUCKET).remove(paths);if(error)console.warn(error.message);}
         const {error}=await client.from('cards').delete().eq('id',card.id).eq('user_id',currentUser.id);if(error)throw error;
-        if(editingCardId===card.id)resetCardForm();message('cardRegisterStatus','フレカを削除しました。');await loadCards();
+        if(editingCardId===card.id)resetCardForm();message('cardRegisterStatus','フレカを削除しました。');scheduleCloudBackup();await loadCards();
       }));
       actions.append(edit,del);item.append(info,actions);list.appendChild(item);
     });
@@ -749,11 +763,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       const edit=document.createElement('button');edit.className='secondary';edit.textContent='名前・メモ編集';edit.addEventListener('click',()=>{
         const name=prompt('マイキャラ名',character.character_name);if(name===null)return;if(!name.trim())return alert('名前を入力してください。');
         const memo=prompt('メモ（任意）',character.character_data?.memo||'');if(memo===null)return;
-        runSafely(async()=>{const {error}=await client.from('my_characters').update({character_name:name.trim(),character_data:{...(character.character_data||{}),memo:memo.trim()}}).eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;message('characterStatus','マイキャラを更新しました。');await loadCharacters();await loadCards();});
+        runSafely(async()=>{const {error}=await client.from('my_characters').update({character_name:name.trim(),character_data:{...(character.character_data||{}),memo:memo.trim()}}).eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;message('characterStatus','マイキャラを更新しました。');scheduleCloudBackup();await loadCharacters();await loadCards();});
       });
       const del=document.createElement('button');del.className='danger';del.textContent='削除';del.addEventListener('click',()=>runSafely(async()=>{
         if(!confirm('「'+character.character_name+'」を削除しますか？\n紐づいたフレカのマイキャラ設定は未設定になります。'))return;
-        const {error}=await client.from('my_characters').delete().eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;message('characterStatus','マイキャラを削除しました。');if(activeCharacter===character.id)activeCharacter='all';await loadCharacters();await loadCards();
+        const {error}=await client.from('my_characters').delete().eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;message('characterStatus','マイキャラを削除しました。');scheduleCloudBackup();if(activeCharacter===character.id)activeCharacter='all';await loadCharacters();await loadCards();
       }));actions.append(edit,del);item.append(info,actions);list.appendChild(item);
     });
   }
@@ -840,9 +854,127 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(!currentUser)return message('shareStatus','先にログインしてください。');
     const {error}=await client.from('profiles').update({is_public:$('publicToggle').checked}).eq('id',currentUser.id);
     if(error)return message('shareStatus','保存エラー：'+error.message);
-    await loadShare();message('shareStatus','公開設定を更新しました。');
+    await loadShare();scheduleCloudBackup();message('shareStatus','公開設定を更新しました。');
   }
   async function loadData(){if(!client||!currentUser)return;await loadCharacters();await loadCards();await loadShare();}
+
+  // Full backup: database rows plus original image files from private Storage.
+  let cloudBackupTimer=null, cloudBackupRunning=false;
+  function backupStatus(text){message('backupStatus',text);}
+  function backupTimestamp(){return new Date().toISOString().replace(/[:.]/g,'-');}
+  async function makeBackupZip(){
+    if(!currentUser||!client)throw new Error('ログインしてください。');
+    if(!window.JSZip)throw new Error('バックアップ機能を読み込めません。通信環境を確認してください。');
+    const zip=new JSZip(), assetIndex=[];
+    const [cardResult,charResult,profileResult]=await Promise.all([
+      client.from('cards').select('*').eq('user_id',currentUser.id),
+      client.from('my_characters').select('*').eq('user_id',currentUser.id),
+      client.from('profiles').select('id,display_name,theme_palette,is_public,share_slug').eq('id',currentUser.id).maybeSingle()
+    ]);
+    if(cardResult.error)throw cardResult.error;if(charResult.error)throw charResult.error;if(profileResult.error)throw profileResult.error;
+    const cardRows=cardResult.data||[], characterRows=charResult.data||[];
+    const paths=[...new Set(cardRows.flatMap(card=>[card.card_data?.photo_path,card.card_data?.qr_path]).filter(Boolean))];
+    for(let i=0;i<paths.length;i++){
+      const path=paths[i],{data,error}=await client.storage.from(BUCKET).download(path);
+      if(error)throw new Error('画像のバックアップに失敗しました：'+path+' / '+error.message);
+      const filename='assets/'+String(i+1).padStart(4,'0')+'_'+path.split('/').pop();
+      zip.file(filename,data);
+      assetIndex.push({path,filename});
+    }
+    zip.file('backup.json',JSON.stringify({
+      format:'aipri-friendcardbook-backup',version:1,created_at:new Date().toISOString(),
+      user_id:currentUser.id,profile:profileResult.data||null,cards:cardRows,characters:characterRows,assets:assetIndex
+    },null,2));
+    return await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:5}});
+  }
+  function downloadBlob(blob,filename){
+    const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  }
+  async function exportLocalBackup(){
+    try{
+      backupStatus('バックアップを作成しています…');
+      const blob=await makeBackupZip();
+      downloadBlob(blob,'aipri-friendcardbook-backup-'+backupTimestamp()+'.zip');
+      backupStatus('端末へのバックアップを作成しました。iPhoneでは「ファイル」に保存してください。');
+    }catch(error){backupStatus('バックアップ失敗：'+error.message);}
+  }
+  async function saveCloudBackup(showMessage=true){
+    if(!currentUser||!client)throw new Error('ログインしてください。');
+    if(cloudBackupRunning)return;
+    cloudBackupRunning=true;
+    try{
+      backupStatus('クラウドバックアップを作成しています…');
+      const blob=await makeBackupZip(),path=currentUser.id+'/backups/'+backupTimestamp()+'.zip';
+      const {error}=await client.storage.from(BUCKET).upload(path,blob,{upsert:false,contentType:'application/zip'});
+      if(error)throw error;
+      const {data:listData,error:listError}=await client.storage.from(BUCKET).list(currentUser.id+'/backups',{limit:100,sortBy:{column:'name',order:'desc'}});
+      if(!listError&&listData){
+        const old=listData.filter(x=>x.name.endsWith('.zip')).slice(5).map(x=>currentUser.id+'/backups/'+x.name);
+        if(old.length)await client.storage.from(BUCKET).remove(old);
+      }
+      backupStatus(showMessage?'クラウドにバックアップしました。':'変更をクラウドに自動バックアップしました。');
+    }finally{cloudBackupRunning=false;}
+  }
+  function scheduleCloudBackup(){
+    if(!currentUser||!client)return;
+    clearTimeout(cloudBackupTimer);
+    cloudBackupTimer=setTimeout(()=>saveCloudBackup(false).catch(error=>backupStatus('自動バックアップ失敗：'+error.message)),5000);
+  }
+  async function restoreBackupBlob(blob){
+    if(!currentUser||!client)throw new Error('ログインしてください。');
+    if(!window.JSZip)throw new Error('バックアップ機能を読み込めません。');
+    const zip=await JSZip.loadAsync(blob),manifestFile=zip.file('backup.json');
+    if(!manifestFile)throw new Error('バックアップ内にデータが見つかりません。');
+    const manifest=JSON.parse(await manifestFile.async('string'));
+    if(manifest.format!=='aipri-friendcardbook-backup'||!Array.isArray(manifest.cards)||!Array.isArray(manifest.characters)||!Array.isArray(manifest.assets))throw new Error('対応していないバックアップ形式です。');
+    if(manifest.user_id!==currentUser.id)throw new Error('別のユーザーのバックアップです。元のアカウントでログインしてください。');
+    for(const asset of manifest.assets){
+      const file=zip.file(asset.filename);if(!file)throw new Error('画像ファイルが不足しています：'+asset.filename);
+      const fileBlob=await file.async('blob');
+      const ext=(asset.path.split('.').pop()||'').toLowerCase(),mime=ext==='png'?'image/png':ext==='webp'?'image/webp':'image/jpeg';
+      const {error}=await client.storage.from(BUCKET).upload(asset.path,fileBlob,{upsert:true,contentType:mime});
+      if(error)throw new Error('画像の復元に失敗しました：'+asset.path+' / '+error.message);
+    }
+    if(manifest.characters.length){
+      const rows=manifest.characters.map(x=>({...x,user_id:currentUser.id}));
+      const {error}=await client.from('my_characters').upsert(rows,{onConflict:'id'});if(error)throw error;
+    }
+    if(manifest.cards.length){
+      const rows=manifest.cards.map(x=>({...x,user_id:currentUser.id}));
+      const {error}=await client.from('cards').upsert(rows,{onConflict:'id'});if(error)throw error;
+    }
+    if(manifest.profile){
+      const {error}=await client.from('profiles').update({display_name:manifest.profile.display_name,theme_palette:manifest.profile.theme_palette,is_public:manifest.profile.is_public}).eq('id',currentUser.id);
+      if(error)console.warn('プロフィール設定は復元されませんでした：',error.message);
+    }
+    await loadData();
+    backupStatus('復元しました。既存データは削除せず、バックアップ内容を追加・更新しました。');
+  }
+  async function restoreLocalBackup(){
+    const file=$('restoreBackupFile')?.files?.[0];if(!file)return backupStatus('先にバックアップZIPを選択してください。');
+    if(!confirm('バックアップの内容を復元します。同じIDのデータは更新されます。続けますか？'))return;
+    try{backupStatus('復元しています…');await restoreBackupBlob(file);$('restoreBackupFile').value='';}
+    catch(error){backupStatus('復元失敗：'+error.message);}
+  }
+  async function restoreLatestCloudBackup(){
+    try{
+      if(!currentUser||!client)throw new Error('ログインしてください。');
+      backupStatus('クラウドバックアップを探しています…');
+      const {data,error}=await client.storage.from(BUCKET).list(currentUser.id+'/backups',{limit:100,sortBy:{column:'name',order:'desc'}});
+      if(error)throw error;
+      const latest=(data||[]).filter(x=>x.name.endsWith('.zip')).sort((a,b)=>b.name.localeCompare(a.name))[0];
+      if(!latest)throw new Error('クラウドバックアップがありません。');
+      if(!confirm('最新のクラウドバックアップを復元します。同じIDのデータは更新されます。続けますか？'))return;
+      const path=currentUser.id+'/backups/'+latest.name,{data:blob,error:downloadError}=await client.storage.from(BUCKET).download(path);
+      if(downloadError)throw downloadError;
+      await restoreBackupBlob(blob);
+    }catch(error){backupStatus('クラウド復元失敗：'+error.message);}
+  }
+
+  $('downloadBackup')?.addEventListener('click',exportLocalBackup);
+  $('cloudBackup')?.addEventListener('click',()=>saveCloudBackup(true).catch(error=>backupStatus('クラウド保存失敗：'+error.message)));
+  $('restoreBackup')?.addEventListener('click',restoreLocalBackup);
+  $('restoreCloudBackup')?.addEventListener('click',restoreLatestCloudBackup);
 
   $('signupBtn')?.addEventListener('click',()=>runSafely(signUp));
   $('loginBtn')?.addEventListener('click',()=>runSafely(async()=>{await boot();await signIn();}));
