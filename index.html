@@ -274,9 +274,20 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <section class="panel"><h3>マイキャラ一覧</h3><p class="hint">同じキャラに複数の姿がある場合は、フレカごとに「マイキャラの姿」を登録できます。</p><div id="charsList" class="itemList"></div></section>
   </section>
   <section id="share" class="view hidden">
-    <div class="sectionHeading"><div><span class="eyebrow">SHARE COLLECTION</span><h2>公開・共有設定</h2></div></div>
-    <section id="shareViewerNotice" class="panel hidden"><h3>共有図鑑</h3><p>この共有ページの閲覧機能は現在準備中です。公開用のカード取得・画像表示の設定が完了すると、ここに図鑑が表示されます。</p></section>
-    <section id="shareAdminPanel" class="panel"><p>共有設定はプロフィールの公開状態を変更します。閲覧専用の共有には、Supabase側の公開閲覧ポリシー設定も必要です。設定前に、写真やQRコードが公開されないことを確認してください。</p><label class="switchrow"><input type="checkbox" id="publicToggle"> 図鑑を公開する</label><button id="savePublic">公開設定を保存</button><p id="shareStatus" role="status"></p><div id="shareLinkArea" class="hidden"><label>共有URL<input id="shareUrl" readonly></label><button id="copyShare">URLをコピー</button></div></section>
+    <div class="sectionHeading"><div><span class="eyebrow" id="shareEyebrow">MY FRIEND CARDS</span><h2 id="shareHeading">フレカ図鑑</h2></div></div>
+    <section id="shareViewerPanel" class="panel hidden">
+      <p id="shareOwnerName" class="muted"></p>
+      <div id="sharedCharacterChips" class="characterChips"></div>
+      <div id="sharedCardsList" class="cardsList"></div>
+      <p id="sharedStatus" role="status" class="muted"></p>
+    </section>
+    <section id="shareAdminPanel" class="panel">
+      <h3>図鑑の公開設定</h3>
+      <label class="switchrow"><input type="checkbox" id="publicToggle"> 図鑑を公開する</label>
+      <p class="hint">ONにすると、このアカウントに登録されているフレカ図鑑全体が共有リンクから閲覧できます。OFFにすると共有リンクから見られなくなります。</p>
+      <p id="shareStatus" role="status"></p>
+      <div id="shareLinkArea" class="hidden"><label>共有URL<input id="shareUrl" readonly></label><button id="copyShare">URLをコピー</button></div>
+    </section>
   </section>
 </main>
 <div id="cropModal" class="cropModal hidden" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
@@ -295,9 +306,10 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   const shareViewerMode = new URLSearchParams(location.search).has('share');
   if (shareViewerMode) {
     $('settingsToggle')?.classList.add('hidden');
-    settings.classList.add('hidden');
+    settings?.classList.add('hidden');
     $('shareAdminPanel')?.classList.add('hidden');
-    $('shareViewerNotice')?.classList.remove('hidden');
+    $('shareViewerPanel')?.classList.remove('hidden');
+    $('shareHeading').textContent = 'フレカ図鑑';
     $('home')?.classList.add('hidden');
     $('search')?.classList.add('hidden');
     $('register')?.classList.add('hidden');
@@ -325,7 +337,13 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     localStorage.setItem(PALETTE_KEY, palette);
   }
   applyThemePalette(localStorage.getItem(PALETTE_KEY) || 'sky');
-  $('themePalette')?.addEventListener('change', e => applyThemePalette(e.target.value));
+  $('themePalette')?.addEventListener('change', e => {
+    applyThemePalette(e.target.value);
+    if (currentUser && client) runSafely(async () => {
+      const {error}=await client.from('profiles').update({theme_palette:e.target.value}).eq('id',currentUser.id);
+      if(error) throw error;
+    });
+  });
 
   function showView(viewName) {
     document.querySelectorAll('.view').forEach(view => view.classList.toggle('hidden', view.id !== viewName));
@@ -706,9 +724,58 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(error){message('characterStatus','読み込みエラー：'+error.message);return;}
     characters=data||[];message('charCount',String(characters.length));updateCharacterOptions();renderCharacters();renderCharacterChips();
   }
+  async function renderSharedCards(){
+    const list=$('sharedCardsList'); if(!list)return; list.replaceChildren();
+    const chips=$('sharedCharacterChips'); if(chips){
+      chips.replaceChildren();
+      const all=document.createElement('button');all.textContent='すべて';all.classList.toggle('active',activeCharacter==='all');
+      all.addEventListener('click',()=>{activeCharacter='all';renderSharedCards();});chips.appendChild(all);
+      characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);b.addEventListener('click',()=>{activeCharacter=c.id;renderSharedCards();});chips.appendChild(b);});
+    }
+    const visible=cards.filter(c=>activeCharacter==='all'||c.character_id===activeCharacter);
+    if(!visible.length){appendText(list,'p','公開されているフレカはありません。','muted');return;}
+    for(const card of visible){
+      const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id);
+      const item=document.createElement('article');item.className='catalogueCard';
+      appendText(item,'h3',card.card_name,'cardTitle');
+      const photo=document.createElement('div');photo.className='photoStage';
+      const placeholder=document.createElement('div');placeholder.className='photoPlaceholder';placeholder.textContent='コーデ写真';photo.appendChild(placeholder);item.appendChild(photo);
+      const bottom=document.createElement('div');bottom.className='cardBottom';
+      const qr=document.createElement('div');qr.className='qrStage';const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qr.appendChild(qrPlaceholder);bottom.appendChild(qr);
+      const details=document.createElement('div');details.className='cardDetails';
+      appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');
+      appendText(details,'div',(d.appearance||'姿未設定')+' ver.','appearanceName');
+      if(d.series)appendText(details,'div',d.series,'muted');
+      bottom.appendChild(details);item.appendChild(bottom);list.appendChild(item);
+      await renderCardMedia(photo,qr,d);
+    }
+  }
+  async function loadSharedCollection(){
+    const status=$('sharedStatus'); if(status)status.textContent='図鑑を読み込んでいます…';
+    const slug=new URLSearchParams(location.search).get('share');
+    if(!slug)throw new Error('共有リンクが正しくありません。');
+    const url='https://lldeduccsqvstqfjexm.supabase.co';
+    const key='sb_publishable_lx1lacFLektj2cAfzAP64A_7tEPd69A';
+    await loadSupabaseLibrary();
+    client=window.supabase.createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+    const {data:profile,error:profileError}=await client.from('profiles').select('id,display_name,theme_palette,is_public').eq('share_slug',slug).eq('is_public',true).maybeSingle();
+    if(profileError)throw new Error('公開プロフィールを取得できません：'+profileError.message);
+    if(!profile)throw new Error('この図鑑は非公開、または共有リンクが無効です。');
+    if(profile.theme_palette)applyThemePalette(profile.theme_palette);
+    $('shareOwnerName').textContent=profile.display_name ? profile.display_name+' さんのフレカ図鑑' : 'フレカ図鑑';
+    const [cardResult,charResult]=await Promise.all([
+      client.from('cards').select('id,card_name,card_data,character_id,created_at').eq('user_id',profile.id).order('created_at',{ascending:false}),
+      client.from('my_characters').select('id,character_name,character_data,created_at').eq('user_id',profile.id).order('created_at',{ascending:false})
+    ]);
+    if(cardResult.error)throw new Error('フレカを取得できません：'+cardResult.error.message);
+    if(charResult.error)throw new Error('マイキャラを取得できません：'+charResult.error.message);
+    cards=cardResult.data||[];characters=charResult.data||[];activeCharacter='all';
+    if(status)status.textContent=cards.length+'枚のフレカを表示しています。';
+    await renderSharedCards();
+  }
   async function loadShare(){
     if(!client||!currentUser)return;
-    const {data,error}=await client.from('profiles').select('is_public,share_slug,display_name').eq('id',currentUser.id).maybeSingle();
+    const {data,error}=await client.from('profiles').select('is_public,share_slug,display_name,theme_palette').eq('id',currentUser.id).maybeSingle();
     if(error||!data){message('shareStatus','プロフィールを読み込めませんでした。');return;}
     $('publicToggle').checked=!!data.is_public;shareUrl=data.share_slug?location.origin+location.pathname+'?share='+encodeURIComponent(data.share_slug):'';
     $('shareUrl').value=data.is_public&&shareUrl?shareUrl:'現在は非公開です。';$('shareLinkArea').classList.toggle('hidden',!data.is_public||!shareUrl);
@@ -717,7 +784,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(!currentUser)return message('shareStatus','先にログインしてください。');
     const {error}=await client.from('profiles').update({is_public:$('publicToggle').checked}).eq('id',currentUser.id);
     if(error)return message('shareStatus','保存エラー：'+error.message);
-    await loadShare();message('shareStatus','公開設定を保存しました。※共有ページの表示設定は別途必要です。');
+    await loadShare();message('shareStatus','公開設定を更新しました。');
   }
   async function loadData(){if(!client||!currentUser)return;await loadCharacters();await loadCards();await loadShare();}
 
@@ -726,6 +793,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   $('addCard')?.addEventListener('click',()=>runSafely(addCard));
   $('addChar')?.addEventListener('click',()=>runSafely(addCharacter));
   $('savePublic')?.addEventListener('click',()=>runSafely(savePublic));
+  $('publicToggle')?.addEventListener('change',()=>runSafely(savePublic));
   $('cancelCardEdit')?.addEventListener('click',()=>{resetCardForm();message('cardRegisterStatus','編集をキャンセルしました。');});
   $('registerModeAdd')?.addEventListener('click',()=>setRegisterMode('add'));
   $('registerModeManage')?.addEventListener('click',()=>setRegisterMode('manage'));
@@ -747,7 +815,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   });
   setRegisterMode('add');
   showView(shareViewerMode?'share':'home');
-  if(!shareViewerMode&&localStorage.getItem('aipri_url')&&localStorage.getItem('aipri_key'))boot().catch(error=>{console.error(error);message('authStatus','初期化エラー：'+(error?.message||error));});
+  if(shareViewerMode){
+    loadSharedCollection().catch(error=>{console.error(error);message('sharedStatus',error?.message||String(error));});
+  } else if(localStorage.getItem('aipri_url')&&localStorage.getItem('aipri_key')) {
+    boot().catch(error=>{console.error(error);message('authStatus','初期化エラー：'+(error?.message||error));});
+  }
 })();
 </script>
 </body>
