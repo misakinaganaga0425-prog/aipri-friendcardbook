@@ -177,15 +177,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   <button id="settingsToggle" class="iconButton" aria-label="接続設定">⚙</button>
 </header>
 <main>
-  <section id="notice" class="panel noticePanel"><b>最初に接続設定を確認</b><p>Supabaseの設定が済んでいる場合は、ログインへ進めます。</p><button id="openSettings">接続設定</button><button id="dismissNotice" class="secondary">閉じる</button></section>
   <section id="settings" class="panel hidden">
     <div class="between"><h2>接続設定</h2><button id="closeSettings" class="secondary">閉じる</button></div>
-    <label>アプリのテーマカラー
-      <select id="themePalette">
-        <option value="sky">水色</option><option value="pink">ピンク</option><option value="white">白</option><option value="lavender">ラベンダー</option><option value="yellow">黄色</option><option value="green">緑</option>
-      </select>
-      <span class="hint">選んだ色はこの端末に保存され、次回も維持されます。</span>
-    </label>
     <label>Project URL<input id="url" placeholder="https://xxxx.supabase.co" autocomplete="url"></label>
     <label>Publishable key<input id="key" type="password" placeholder="sb_publishable_..."></label>
     <p class="hint">Secret / service_role keyは入力しないでください。</p>
@@ -205,6 +198,15 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <div class="buttonRow"><button id="loginBtn">ログイン</button><button id="signupBtn" class="secondary">新規登録</button></div><p id="authStatus" role="status"></p>
     </section>
     <section class="hero"><span class="pill">MY COLLECTION</span><h2 id="homeTitle">大切なフレンドカードを<br>かわいくまとめよう。</h2><p id="homeMessage">ログインしてフレカとマイキャラを管理しよう。</p></section>
+    <section class="panel" id="themePanel">
+      <h3>アプリのテーマカラー</h3>
+      <label>好きな色を選んでね
+        <select id="themePalette">
+          <option value="sky">水色</option><option value="pink">ピンク</option><option value="white">白</option><option value="lavender">ラベンダー</option><option value="yellow">黄色</option><option value="green">緑</option>
+        </select>
+        <span class="hint">選んだ色はこの端末に保存され、次回も維持されます。</span>
+      </label>
+    </section>
     <h2>コレクション</h2>
     <div class="stats"><article><small>登録フレカ</small><strong id="cardCount">0</strong></article><article><small>マイキャラ</small><strong id="charCount">0</strong></article><article><small>接続状態</small><strong id="dbState">未接続</strong></article></div>
     <section class="panel"><div class="between"><h3>マイキャラを登録</h3><span class="miniIcon">♡</span></div>
@@ -222,7 +224,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <label>キーワード検索<input id="cardSearch" type="search" placeholder="コーデ名・色・マイキャラ・姿・弾数・メモ" autocomplete="off"></label>
       <div class="filterGrid">
         <label>マイキャラの姿<input id="appearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
-        <label>コーデの弾数<select id="seriesFilter"><option value="">すべての弾数</option><option value="1弾">1弾</option><option value="2弾">2弾</option><option value="3弾">3弾</option><option value="4弾">4弾</option><option value="5弾">5弾</option><option value="6弾">6弾</option><option value="7弾">7弾</option><option value="8弾">8弾</option><option value="9弾">9弾</option><option value="10弾">10弾</option><option value="プリマジ">プリマジ</option><option value="その他">その他</option></select></label>
+        <label>コーデの弾数・シリーズ<select id="seriesFilter"><option value="">すべて</option></select></label>
       </div>
       <p class="hint">検索条件を空欄にすると、登録済みのフレカをすべて表示します。色・弾数・メモなどは表示しなくても検索対象になります。</p>
     </details>
@@ -246,7 +248,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <label>マイキャラ<select id="cardCharacter"><option value="">マイキャラを選択（任意）</option></select></label>
       <label>マイキャラをこの場で新規登録（任意）<input id="newCharacterInline" maxlength="100" placeholder="例：いのり"></label>
       <label>マイキャラの姿<input id="cardAppearance" maxlength="100" placeholder="例：通常、ツインテール、ボブ"></label>
-      <label>コーデの弾数<select id="cardSeries"><option value="">選択してください</option><option value="1弾">1弾</option><option value="2弾">2弾</option><option value="3弾">3弾</option><option value="4弾">4弾</option><option value="5弾">5弾</option><option value="6弾">6弾</option><option value="7弾">7弾</option><option value="8弾">8弾</option><option value="9弾">9弾</option><option value="10弾">10弾</option><option value="プリマジ">プリマジ</option><option value="その他">その他</option></select><span class="hint">例：1弾、プリマジ など</span></label>
+      <label>コーデの弾数・シリーズ<input id="cardSeries" maxlength="100" placeholder="例：1弾、プリマジ、アイカツ！ など"><span class="hint">自由に入力できます。シリーズ名や作品名も登録できます。</span></label>
       <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択後に切り取り位置や拡大率を調整できます。</span></label>
       <label>フレンドコード（QRコード）の画像<input id="cardQr" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・写真とは別に保存。QR全体が入るように切り取りできます。</span></label>
       <label>メモ（任意）<textarea id="cardMemo" rows="3" maxlength="1000" placeholder="自由にメモ"></textarea></label>
@@ -260,7 +262,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
         <label>キーワード検索<input id="manageCardSearch" type="search" placeholder="コーデ名・色・マイキャラ・姿・弾数・メモ" autocomplete="off"></label>
         <div class="filterGrid">
           <label>マイキャラ<select id="manageCardCharacterFilter"><option value="">すべてのマイキャラ</option></select></label>
-          <label>コーデの弾数<select id="manageCardSeriesFilter"><option value="">すべての弾数</option><option value="1弾">1弾</option><option value="2弾">2弾</option><option value="3弾">3弾</option><option value="4弾">4弾</option><option value="5弾">5弾</option><option value="6弾">6弾</option><option value="7弾">7弾</option><option value="8弾">8弾</option><option value="9弾">9弾</option><option value="10弾">10弾</option><option value="プリマジ">プリマジ</option><option value="その他">その他</option></select></label>
+          <label>コーデの弾数・シリーズ<select id="manageCardSeriesFilter"><option value="">すべて</option></select></label>
         </div>
         <label>マイキャラの姿<input id="manageCardAppearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
       </details>
@@ -273,7 +275,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   </section>
   <section id="share" class="view hidden">
     <div class="sectionHeading"><div><span class="eyebrow">SHARE COLLECTION</span><h2>公開・共有設定</h2></div></div>
-    <section class="panel"><p>共有設定はプロフィールの公開状態を変更します。閲覧専用の共有には、Supabase側の公開閲覧ポリシー設定も必要です。設定前に、写真やQRコードが公開されないことを確認してください。</p><label class="switchrow"><input type="checkbox" id="publicToggle"> 図鑑を公開する</label><button id="savePublic">公開設定を保存</button><p id="shareStatus" role="status"></p><div id="shareLinkArea" class="hidden"><label>共有URL<input id="shareUrl" readonly></label><button id="copyShare">URLをコピー</button></div></section>
+    <section id="shareViewerNotice" class="panel hidden"><h3>共有図鑑</h3><p>この共有ページの閲覧機能は現在準備中です。公開用のカード取得・画像表示の設定が完了すると、ここに図鑑が表示されます。</p></section>
+    <section id="shareAdminPanel" class="panel"><p>共有設定はプロフィールの公開状態を変更します。閲覧専用の共有には、Supabase側の公開閲覧ポリシー設定も必要です。設定前に、写真やQRコードが公開されないことを確認してください。</p><label class="switchrow"><input type="checkbox" id="publicToggle"> 図鑑を公開する</label><button id="savePublic">公開設定を保存</button><p id="shareStatus" role="status"></p><div id="shareLinkArea" class="hidden"><label>共有URL<input id="shareUrl" readonly></label><button id="copyShare">URLをコピー</button></div></section>
   </section>
 </main>
 <div id="cropModal" class="cropModal hidden" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
@@ -289,7 +292,19 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   const $ = id => document.getElementById(id);
   const main = document.querySelector('main');
   const settings = $('settings');
-  const notice = $('notice');
+  const shareViewerMode = new URLSearchParams(location.search).has('share');
+  if (shareViewerMode) {
+    $('settingsToggle')?.classList.add('hidden');
+    settings.classList.add('hidden');
+    $('shareAdminPanel')?.classList.add('hidden');
+    $('shareViewerNotice')?.classList.remove('hidden');
+    $('home')?.classList.add('hidden');
+    $('search')?.classList.add('hidden');
+    $('register')?.classList.add('hidden');
+    $('characters')?.classList.add('hidden');
+    $('share')?.classList.remove('hidden');
+    document.querySelector('.tabs')?.classList.add('hidden');
+  }
   if (!main || !settings) return;
 
   let client = null, currentUser = null, bootPromise = null;
@@ -338,10 +353,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       if ($('cardRegisterPanel') && !$('cardRegisterPanel').classList.contains('hidden')) message('cardRegisterStatus', text);
     });
   }
-  $('openSettings')?.addEventListener('click', () => { settings.classList.remove('hidden'); notice?.classList.add('hidden'); });
-  $('settingsToggle')?.addEventListener('click', () => { settings.classList.remove('hidden'); notice?.classList.add('hidden'); });
+  $('settingsToggle')?.addEventListener('click', () => { if (!shareViewerMode) settings.classList.remove('hidden'); });
   $('closeSettings')?.addEventListener('click', () => settings.classList.add('hidden'));
-  $('dismissNotice')?.addEventListener('click', () => notice?.classList.add('hidden'));
   document.querySelectorAll('.tabs button').forEach(button => button.addEventListener('click', () => showMainTab(button.dataset.nav)));
   document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => showView(button.dataset.go)));
 
@@ -514,7 +527,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   $('cropModal').addEventListener('click',e=>{if(e.target===$('cropModal'))$('cancelCrop').click();});
 
   function getCardDataFields(){
-    return {color:$('cardColor').value.trim(),appearance:$('cardAppearance').value.trim(),series:$('cardSeries').value,memo:$('cardMemo').value.trim()};
+    return {color:$('cardColor').value.trim(),appearance:$('cardAppearance').value.trim(),series:$('cardSeries').value.trim(),memo:$('cardMemo').value.trim()};
   }
   function validImage(file,label){
     if(!file)return true;
@@ -536,7 +549,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   }
   function beginEditCard(card){
     setRegisterMode('add');
-    const d=card.card_data||{};editingCardId=card.id;$('newCardName').value=card.card_name||'';$('cardColor').value=d.color||'';$('cardCharacter').value=card.character_id||'';$('newCharacterInline').value='';$('cardAppearance').value=d.appearance||'';$('cardSeries').value=SERIES.includes(d.series)?d.series:'';$('cardMemo').value=d.memo||'';$('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');$('cardRegisterPanel').scrollIntoView({behavior:'smooth',block:'start'});message('cardRegisterStatus','編集モードです。写真・QRを選び直さなければ現在の画像を維持します。');
+    const d=card.card_data||{};editingCardId=card.id;$('newCardName').value=card.card_name||'';$('cardColor').value=d.color||'';$('cardCharacter').value=card.character_id||'';$('newCharacterInline').value='';$('cardAppearance').value=d.appearance||'';$('cardSeries').value=d.series||'';$('cardMemo').value=d.memo||'';$('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');$('cardRegisterPanel').scrollIntoView({behavior:'smooth',block:'start'});message('cardRegisterStatus','編集モードです。写真・QRを選び直さなければ現在の画像を維持します。');
   }
   async function addCard(){
     if(!currentUser)return message('cardRegisterStatus','先にホームでログインしてください。');
@@ -576,6 +589,17 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     const blank=document.createElement('option');blank.value='';blank.textContent='すべてのマイキャラ';selector.appendChild(blank);
     characters.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.character_name;selector.appendChild(o);});
     selector.value=characters.some(c=>c.id===old)?old:'';
+  }
+  function updateSeriesFilterOptions(){
+    const values=[...new Set(cards.map(card=>String(card.card_data?.series||'').trim()).filter(Boolean))];
+    values.sort((a,b)=>a.localeCompare(b,'ja',{numeric:true}));
+    [['seriesFilter','すべて'],['manageCardSeriesFilter','すべて']].forEach(([id,blankLabel])=>{
+      const selector=$(id);if(!selector)return;
+      const old=selector.value;selector.replaceChildren();
+      const blank=document.createElement('option');blank.value='';blank.textContent=blankLabel;selector.appendChild(blank);
+      values.forEach(value=>{const option=document.createElement('option');option.value=value;option.textContent=value;selector.appendChild(option);});
+      selector.value=values.includes(old)?old:'';
+    });
   }
   function renderCharacterChips(){
     const containers=[$('characterChips'),$('homeCharacterList')].filter(Boolean);
@@ -656,7 +680,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(!client||!currentUser)return;
     const {data,error}=await client.from('cards').select('id,card_name,card_data,character_id,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false});
     if(error){message('cardRegisterStatus','読み込みエラー：'+error.message);return;}
-    cards=data||[];message('cardCount',String(cards.length));renderCards();renderManageCards();
+    cards=data||[];message('cardCount',String(cards.length));updateSeriesFilterOptions();renderCards();renderManageCards();
   }
   function renderCharacters(){
     const list=$('charsList');if(!list)return;list.replaceChildren();
@@ -718,12 +742,12 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     const url=$('url').value.trim().replace(/\/+$/,''),key=$('key').value.trim();
     if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||(!key.startsWith('sb_publishable_')&&!key.startsWith('eyJ'))){message('status','Project URLとPublishable keyを確認してください。');return;}
     localStorage.setItem('aipri_url',url);localStorage.setItem('aipri_key',key);message('status','接続を確認しています…');
-    try{const response=await fetch(url+'/auth/v1/health',{headers:{apikey:key},cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);client=null;bootPromise=null;await boot();message('dbState','接続OK');message('status','接続できました。');settings.classList.add('hidden');notice?.classList.add('hidden');}
+    try{const response=await fetch(url+'/auth/v1/health',{headers:{apikey:key},cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);client=null;bootPromise=null;await boot();message('dbState','接続OK');message('status','接続できました。');settings.classList.add('hidden');}
     catch(error){message('dbState','要確認');message('status','接続失敗：'+(error?.message||error));}
   });
   setRegisterMode('add');
-  showView(new URLSearchParams(location.search).has('share')?'share':'home');
-  if(localStorage.getItem('aipri_url')&&localStorage.getItem('aipri_key'))boot().catch(error=>{console.error(error);message('authStatus','初期化エラー：'+(error?.message||error));});
+  showView(shareViewerMode?'share':'home');
+  if(!shareViewerMode&&localStorage.getItem('aipri_url')&&localStorage.getItem('aipri_key'))boot().catch(error=>{console.error(error);message('authStatus','初期化エラー：'+(error?.message||error));});
 })();
 </script>
 </body>
