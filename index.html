@@ -342,7 +342,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   const $ = id => document.getElementById(id);
   const main = document.querySelector('main');
   const settings = $('settings');
-  const shareViewerMode = new URLSearchParams(location.search).has('share');
+  const pathParts = location.pathname.split('/').filter(Boolean);\n  const pathShareSlug = pathParts[0] === 's' && pathParts[1] ? decodeURIComponent(pathParts[1]) : '';\n  const queryShareSlug = new URLSearchParams(location.search).get('share') || '';\n  const activeShareSlug = pathShareSlug || queryShareSlug;\n  const shareViewerMode = !!activeShareSlug;
   if (shareViewerMode) {
     $('settingsToggle')?.classList.add('hidden');
     settings?.classList.add('hidden');
@@ -816,7 +816,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   }
   async function loadSharedCollection(){
     const status=$('sharedStatus'); if(status)status.textContent='図鑑を読み込んでいます…';
-    const slug=new URLSearchParams(location.search).get('share');
+    const slug=activeShareSlug;
     if(!slug)throw new Error('共有リンクが正しくありません。');
     const url='https://lldeduccsqzvstqfjexm.supabase.co';
     const key='sb_publishable_lx1lacFLektj2cAfzAP64A_7tEPd69A';
@@ -847,7 +847,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(!client||!currentUser)return;
     const {data,error}=await client.from('profiles').select('is_public,share_slug,display_name,theme_palette').eq('id',currentUser.id).maybeSingle();
     if(error||!data){message('shareStatus','プロフィールを読み込めませんでした。');return;}
-    $('publicToggle').checked=!!data.is_public;shareUrl=data.share_slug?location.origin+location.pathname+'?share='+encodeURIComponent(data.share_slug):'';
+    $('publicToggle').checked=!!data.is_public;shareUrl=data.share_slug?location.origin+'/s/'+encodeURIComponent(data.share_slug):'';
     $('shareUrl').value=data.is_public&&shareUrl?shareUrl:'現在は非公開です。';$('shareLinkArea').classList.toggle('hidden',!data.is_public||!shareUrl);
   }
   async function savePublic(){
