@@ -190,29 +190,9 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 <header class="siteHeader">
   <div class="logo" aria-hidden="true">✧</div>
   <div class="brand"><small>MY FRIEND CARD COLLECTION</small><h1>アイプリ フレンドカード図鑑</h1></div>
-  <button id="settingsToggle" class="iconButton" aria-label="接続設定">⚙</button>
 </header>
 <main>
-  <section id="settings" class="panel hidden">
-    <div class="between"><h2>接続設定</h2><button id="closeSettings" class="secondary">閉じる</button></div>
-    <label>Project URL<input id="url" placeholder="https://xxxx.supabase.co" autocomplete="url"></label>
-    <label>Publishable key<input id="key" type="password" placeholder="sb_publishable_..."></label>
-    <p class="hint">Secret / service_role keyは入力しないでください。</p>
-    <div class="buttonRow"><button id="save">保存して接続確認</button><button id="clear" class="secondary">消去</button></div><p id="status" role="status"></p>
-    <section class="panel" id="backupPanel">
-      <h3>バックアップ・復元</h3>
-      <p class="hint">フレカ・マイキャラ・写真・QR画像をまとめて保存します。iPhoneに保存するバックアップと、Supabaseに保存するクラウドバックアップに対応します。</p>
-      <div class="buttonRow">
-        <button type="button" id="downloadBackup">端末にバックアップ</button>
-        <button type="button" id="cloudBackup" class="secondary">クラウドに保存</button>
-      </div>
-      <label>バックアップファイルから復元<input type="file" id="restoreBackupFile" accept=".zip,application/zip"></label>
-      <button type="button" id="restoreBackup" class="secondary">選択したファイルから復元</button>
-      <div class="buttonRow"><button type="button" id="restoreCloudBackup" class="secondary">最新のクラウドバックアップから復元</button></div>
-      <p id="backupStatus" class="hint" role="status"></p>
-      <p class="hint">復元は既存データを削除せず、同じIDのデータを更新・不足分を追加する方式です。復元前に現在のデータもバックアップすることをおすすめします。</p>
-    </section>
-  </section>
+  <section id="settings" class="hidden" aria-hidden="true"></section>
   <nav class="tabs" aria-label="メインメニュー">
     <button class="active" data-nav="home">⌂<small>ホーム</small></button>
     <button data-nav="search">⌕<small>フレカ検索</small></button>
@@ -244,6 +224,19 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <button id="addChar">マイキャラを追加</button><p id="characterStatus" role="status"></p>
     </section>
     <section class="panel"><div class="between"><h3>登録済みマイキャラ</h3><button class="secondary smallButton" data-go="characters">一覧を見る</button></div><div id="homeCharacterList" class="characterChips"><p class="muted">ログインすると表示されます。</p></div></section>
+    <section class="panel" id="backupPanel">
+      <h3>バックアップ・復元</h3>
+      <p class="hint">フレカ・マイキャラ・写真・QR画像をまとめて保存します。iPhoneに保存するバックアップと、Supabaseに保存するクラウドバックアップに対応します。</p>
+      <div class="buttonRow">
+        <button type="button" id="downloadBackup">端末にバックアップ</button>
+        <button type="button" id="cloudBackup" class="secondary">クラウドに保存</button>
+      </div>
+      <label>バックアップファイルから復元<input type="file" id="restoreBackupFile" accept=".zip,application/zip"></label>
+      <button type="button" id="restoreBackup" class="secondary">選択したファイルから復元</button>
+      <div class="buttonRow"><button type="button" id="restoreCloudBackup" class="secondary">最新のクラウドバックアップから復元</button></div>
+      <p id="backupStatus" class="hint" role="status"></p>
+      <p class="hint">復元は既存データを削除せず、同じIDのデータを更新・不足分を追加する方式です。復元前に現在のデータもバックアップすることをおすすめします。</p>
+    </section>
   </section>
   <section id="search" class="view hidden">
     <div class="sectionHeading"><div><span class="eyebrow">MY FRIEND CARDS</span><h2>フレカ検索</h2></div><span class="pill">COLLECTION</span></div>
@@ -340,6 +333,9 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
+  // Public Supabase project configuration. Never put a service_role/secret key here.
+  const SUPABASE_URL = 'https://lldeduccsqvstqfjexm.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_lx1lacFLektj2cAfzAP64A_7tEPd69A';
   const main = document.querySelector('main');
   const settings = $('settings');
   const pathParts = location.pathname.split('/').filter(Boolean);
@@ -348,7 +344,6 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   const activeShareSlug = pathShareSlug || queryShareSlug;
   const shareViewerMode = !!activeShareSlug;
   if (shareViewerMode) {
-    $('settingsToggle')?.classList.add('hidden');
     settings?.classList.add('hidden');
     $('shareAdminPanel')?.classList.add('hidden');
     $('shareViewerPanel')?.classList.remove('hidden');
@@ -414,19 +409,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       if ($('cardRegisterPanel') && !$('cardRegisterPanel').classList.contains('hidden')) message('cardRegisterStatus', text);
     });
   }
-  $('settingsToggle')?.addEventListener('click', () => { if (!shareViewerMode) settings.classList.remove('hidden'); });
-  $('closeSettings')?.addEventListener('click', () => settings.classList.add('hidden'));
   document.querySelectorAll('.tabs button').forEach(button => button.addEventListener('click', () => showMainTab(button.dataset.nav)));
   document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => showView(button.dataset.go)));
-
-  $('url').value = localStorage.getItem('aipri_url') || '';
-  $('key').value = localStorage.getItem('aipri_key') || '';
-  $('clear')?.addEventListener('click', () => {
-    localStorage.removeItem('aipri_url'); localStorage.removeItem('aipri_key');
-    $('url').value = ''; $('key').value = ''; client = null; bootPromise = null; currentUser = null; cards = []; characters = [];
-    renderCards(); renderCharacters(); renderCharacterChips(); updateCharacterOptions(); renderManageCards(); updateAccountUI();
-    message('status', '接続設定を消去しました。'); message('dbState', '未接続');
-  });
 
   async function loadSupabaseLibrary() {
     if (window.supabase?.createClient) return;
@@ -441,8 +425,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if (client) return;
     if (bootPromise) return bootPromise;
     bootPromise = (async () => {
-      const url = localStorage.getItem('aipri_url'), key = localStorage.getItem('aipri_key');
-      if (!url || !key) { message('authStatus', '先に接続設定を保存してください。'); return; }
+      const url = SUPABASE_URL, key = SUPABASE_PUBLISHABLE_KEY;
       await loadSupabaseLibrary();
       client = window.supabase.createClient(url, key);
       const { data, error } = await client.auth.getSession(); if (error) throw error;
@@ -460,8 +443,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     const username = $('authUsername').value.trim(), password = $('authPassword').value;
     if (!validUsername(username)) return message('authStatus', 'ユーザーIDは半角英数字と _ の3〜20文字にしてください。');
     if (password.length < 8 || password.length > 128) return message('authStatus', 'パスワードは8〜128文字にしてください。');
-    const url = localStorage.getItem('aipri_url'), key = localStorage.getItem('aipri_key');
-    if (!url || !key) return message('authStatus', '先に接続設定を保存してください。');
+    const url = SUPABASE_URL, key = SUPABASE_PUBLISHABLE_KEY;
     message('authStatus', '新規登録しています…');
     const response = await fetch(url.replace(/\/+$/, '') + '/functions/v1/smart-task', { method:'POST', headers:{'Content-Type':'application/json', apikey:key, Authorization:'Bearer '+key}, body:JSON.stringify({username,password,displayName:username}) });
     let result; try { result = await response.json(); } catch { throw new Error('サーバーから正しい応答がありませんでした。'); }
@@ -1009,19 +991,13 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(!shareUrl)return message('shareStatus','共有URLがありません。プロフィール設定を確認してください。');
     try{await navigator.clipboard.writeText(shareUrl);message('shareStatus','共有URLをコピーしました。');}catch{message('shareStatus',shareUrl);}
   });
-  $('save')?.addEventListener('click',async()=>{
-    const url=$('url').value.trim().replace(/\/+$/,''),key=$('key').value.trim();
-    if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||(!key.startsWith('sb_publishable_')&&!key.startsWith('eyJ'))){message('status','Project URLとPublishable keyを確認してください。');return;}
-    localStorage.setItem('aipri_url',url);localStorage.setItem('aipri_key',key);message('status','接続を確認しています…');
-    try{const response=await fetch(url+'/auth/v1/health',{headers:{apikey:key},cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);client=null;bootPromise=null;await boot();message('dbState','接続OK');message('status','接続できました。');settings.classList.add('hidden');}
-    catch(error){message('dbState','要確認');message('status','接続失敗：'+(error?.message||error));}
-  });
+
   setRegisterMode('add');
   showView(shareViewerMode?'share':'home');
   if(shareViewerMode){
     loadSharedCollection().catch(error=>{console.error(error);message('sharedStatus',error?.message||String(error));});
-  } else if(localStorage.getItem('aipri_url')&&localStorage.getItem('aipri_key')) {
-    boot().catch(error=>{console.error(error);message('authStatus','初期化エラー：'+(error?.message||error));});
+  } else {
+    boot().catch(error=>{console.error(error);message('authStatus','接続エラー：'+(error?.message||error));message('dbState','要確認');});
   }
 })();
 </script>
