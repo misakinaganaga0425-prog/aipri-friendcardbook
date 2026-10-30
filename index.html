@@ -826,7 +826,12 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     const key='sb_publishable_lx1lacFLektj2cAfzAP64A_7tEPd69A';
     await loadSupabaseLibrary();
     client=window.supabase.createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
-    const {data:profile,error:profileError}=await client.from('profiles').select('id,display_name,theme_palette,is_public').eq('share_slug',slug).eq('is_public',true).maybeSingle();
+    let {data:profile,error:profileError}=await client.from('profiles').select('id,display_name,theme_palette,is_public').eq('share_code',slug).eq('is_public',true).maybeSingle();
+    // Keep existing long links working during migration.
+    if(!profile && !profileError){
+      const legacy=await client.from('profiles').select('id,display_name,theme_palette,is_public').eq('share_slug',slug).eq('is_public',true).maybeSingle();
+      profile=legacy.data;profileError=legacy.error;
+    }
     if(profileError)throw new Error('公開プロフィールを取得できません：'+profileError.message);
     if(!profile)throw new Error('この図鑑は非公開、または共有リンクが無効です。');
     if(profile.theme_palette)applyThemePalette(profile.theme_palette);
@@ -849,9 +854,10 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   }
   async function loadShare(){
     if(!client||!currentUser)return;
-    const {data,error}=await client.from('profiles').select('is_public,share_slug,display_name,theme_palette').eq('id',currentUser.id).maybeSingle();
+    const {data,error}=await client.from('profiles').select('is_public,share_code,share_slug,display_name,theme_palette').eq('id',currentUser.id).maybeSingle();
     if(error||!data){message('shareStatus','プロフィールを読み込めませんでした。');return;}
-    $('publicToggle').checked=!!data.is_public;shareUrl=data.share_slug?location.origin+'/s/'+encodeURIComponent(data.share_slug):'';
+    const shortCode=data.share_code||data.share_slug;
+    $('publicToggle').checked=!!data.is_public;shareUrl=shortCode?location.origin+'/s/'+encodeURIComponent(shortCode):'';
     $('shareUrl').value=data.is_public&&shareUrl?shareUrl:'現在は非公開です。';$('shareLinkArea').classList.toggle('hidden',!data.is_public||!shareUrl);
   }
   async function savePublic(){
