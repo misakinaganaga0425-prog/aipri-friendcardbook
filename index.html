@@ -283,7 +283,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <label>マイキャラをこの場で新規登録（任意）<input id="newCharacterInline" maxlength="100" placeholder="例：いのり"></label>
       <label>マイキャラの姿<input id="cardAppearance" maxlength="100" placeholder="例：通常、ツインテール、ボブ"></label>
       <label>コーデの弾数・シリーズ<input id="cardSeries" maxlength="100" placeholder="例：1弾、プリマジ、アイカツ！ など"><span class="hint">自由に入力できます。シリーズ名や作品名も登録できます。</span></label>
-      <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択後に切り取り位置や拡大率を調整できます。</span></label>
+      <label>写真の向き<select id="photoOrientation"><option value="portrait">縦向き</option><option value="landscape">横向き</option></select><span class="hint">写真を登録する前に、縦向き・横向きを選んでね。</span></label>\n      <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択した向きに合わせて切り取りできます。</span></label>
       <label>フレンドコード（QRコード）の画像<input id="cardQr" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・写真とは別に保存。QR全体が入るように切り取りできます。</span></label>
       <label>メモ（任意）<textarea id="cardMemo" rows="3" maxlength="1000" placeholder="自由にメモ"></textarea></label>
       <label class="switchrow"><input id="cardPublicToggle" type="checkbox"> このフレカを共有ページに公開する</label><p class="hint">OFFにすると、このフレカは共有ページに表示されません。あとから変更できます。</p>
@@ -582,7 +582,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     reader.onload=()=>{
       const img=new Image();
       img.onload=()=>{
-        const isQr=input.id==='cardQr',ratio=isQr?1:0.75;
+        const isQr=input.id==='cardQr',ratio=isQr?1:($('photoOrientation').value==='landscape'?4/3:0.75);
         cropCanvas.width=900;cropCanvas.height=Math.round(900/ratio);
         cropState={img,file,input,ratio,zoom:1,panX:0,panY:0};
         cropPointers.clear();cropGesture=null;
@@ -615,7 +615,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   $('cropModal').addEventListener('click',e=>{if(e.target===$('cropModal'))$('cancelCrop').click();});
 
   function getCardDataFields(){
-    return {color:$('cardColor').value.trim(),appearance:$('cardAppearance').value.trim(),series:$('cardSeries').value.trim(),memo:$('cardMemo').value.trim()};
+    return {color:$('cardColor').value.trim(),appearance:$('cardAppearance').value.trim(),series:$('cardSeries').value.trim(),memo:$('cardMemo').value.trim(),photo_orientation:$('photoOrientation').value||'portrait'};
   }
   function validImage(file,label){
     if(!file)return true;
@@ -633,11 +633,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   let editingCardId=null;
   function resetCardForm(){
     ['newCardName','cardColor','newCharacterInline','cardAppearance','cardSeries','cardMemo','cardPhoto','cardQr'].forEach(id=>{if($(id))$(id).value='';});
-    $('cardPublicToggle').checked=false;$('cardCharacter').value='';editingCardId=null;$('addCard').textContent='フレカを登録';$('cancelCardEdit').classList.add('hidden');
+    $('cardPublicToggle').checked=false;$('photoOrientation').value='portrait';$('cardCharacter').value='';editingCardId=null;$('addCard').textContent='フレカを登録';$('cancelCardEdit').classList.add('hidden');
   }
   function beginEditCard(card){
     setRegisterMode('add');
-    const d=card.card_data||{};editingCardId=card.id;$('newCardName').value=card.card_name||'';$('cardColor').value=d.color||'';$('cardCharacter').value=card.character_id||'';$('newCharacterInline').value='';$('cardAppearance').value=d.appearance||'';$('cardSeries').value=d.series||'';$('cardMemo').value=d.memo||'';$('cardPublicToggle').checked=card.is_public!==false;$('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');$('cardRegisterPanel').scrollIntoView({behavior:'smooth',block:'start'});message('cardRegisterStatus','編集モードです。写真・QRを選び直さなければ現在の画像を維持します。');
+    const d=card.card_data||{};editingCardId=card.id;$('newCardName').value=card.card_name||'';$('cardColor').value=d.color||'';$('cardCharacter').value=card.character_id||'';$('newCharacterInline').value='';$('cardAppearance').value=d.appearance||'';$('cardSeries').value=d.series||'';$('cardMemo').value=d.memo||'';$('photoOrientation').value=d.photo_orientation||'portrait';$('cardPublicToggle').checked=card.is_public!==false;$('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');$('cardRegisterPanel').scrollIntoView({behavior:'smooth',block:'start'});message('cardRegisterStatus','編集モードです。写真・QRを選び直さなければ現在の画像を維持します。');
   }
   async function addCard(){
     if(!currentUser)return message('cardRegisterStatus','先にホームでログインしてください。');
