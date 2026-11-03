@@ -204,11 +204,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <p id="status" role="status" aria-live="polite"></p>
     <button id="clear" class="secondary" type="button">保存した接続設定を削除</button>
   </section>
-  <button id="openSettings" class="secondary" type="button" style="display:block;margin:10px auto">Supabase接続設定</button>
+  <button id="openSettings" class="secondary" type="button" style="display:block;margin:4px 12px 8px auto;padding:4px 8px;font-size:10px;opacity:.45;border:0;background:transparent;box-shadow:none">⚙ 接続設定</button>
   <nav class="tabs" aria-label="メインメニュー">
     <button class="active" data-nav="home">⌂<small>ホーム</small></button>
     <button data-nav="search">⌕<small>フレカ検索</small></button>
-    <button data-nav="register">＋<small>フレカ登録</small></button>
+    <button data-nav="register">✎<small>フレカ編集</small></button>
     <button data-nav="share">↗<small>共有</small></button>
   </nav>
   <section id="home" class="view">
@@ -583,7 +583,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     reader.onload=()=>{
       const img=new Image();
       img.onload=()=>{
-        const isQr=input.id==='cardQr',ratio=isQr?1:($('photoOrientation').value==='landscape'?4/3:0.75);
+        const isQr=input.id==='cardQr',ratio=isQr?1:($('photoOrientation').value==='landscape'?1027/662:0.75);
         cropCanvas.width=900;cropCanvas.height=Math.round(900/ratio);
         cropState={img,file,input,ratio,zoom:1,panX:0,panY:0};
         cropPointers.clear();cropGesture=null;
