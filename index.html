@@ -192,7 +192,19 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   <div class="brand"><small>MY FRIEND CARD COLLECTION</small><h1>アイプリ フレンドカード図鑑</h1></div>
 </header>
 <main>
-  <section id="settings" class="hidden" aria-hidden="true"></section>
+  <section id="settings" class="panel hidden" aria-hidden="true">
+    <h2>Supabase接続設定</h2>
+    <p class="hint">SupabaseのProject URLとPublishable Keyを入力して保存してください。Secret / service_roleキーは入力しないでください。</p>
+    <label>Project URL<input id="url" type="url" inputmode="url" placeholder="https://xxxxx.supabase.co" autocomplete="url"></label>
+    <label>Publishable Key<input id="key" type="password" autocomplete="off" placeholder="sb_publishable_..."></label>
+    <div class="buttonRow">
+      <button id="save" type="button">保存して接続</button>
+      <button id="closeSettings" class="secondary" type="button">閉じる</button>
+    </div>
+    <p id="status" role="status" aria-live="polite"></p>
+    <button id="clear" class="secondary" type="button">保存した接続設定を削除</button>
+  </section>
+  <button id="openSettings" class="secondary" type="button" style="display:block;margin:10px auto">Supabase接続設定</button>
   <nav class="tabs" aria-label="メインメニュー">
     <button class="active" data-nav="home">⌂<small>ホーム</small></button>
     <button data-nav="search">⌕<small>フレカ検索</small></button>
@@ -334,10 +346,43 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   'use strict';
   const $ = id => document.getElementById(id);
   // Public Supabase project configuration. Never put a service_role/secret key here.
-  const SUPABASE_URL = 'https://lldeduccsqvstqfjexm.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_lx1lacFLektj2cAfzAP64A_7tEPd69A';
+  let SUPABASE_URL = localStorage.getItem('aipri_url') || 'https://lldeduccsqvstqfjexm.supabase.co';
+  let SUPABASE_PUBLISHABLE_KEY = localStorage.getItem('aipri_key') || 'sb_publishable_lx1lacFLektj2cAfzAP64A_7tEPd69A';
   const main = document.querySelector('main');
   const settings = $('settings');
+  const settingsOpen = () => { settings?.classList.remove('hidden'); settings?.setAttribute('aria-hidden','false'); };
+  const settingsClose = () => { settings?.classList.add('hidden'); settings?.setAttribute('aria-hidden','true'); };
+  if ($('url')) $('url').value = SUPABASE_URL;
+  if ($('key')) $('key').value = SUPABASE_PUBLISHABLE_KEY;
+  $('openSettings')?.addEventListener('click', settingsOpen);
+  $('closeSettings')?.addEventListener('click', settingsClose);
+  $('save')?.addEventListener('click', async () => {
+    const url = ($('url')?.value || '').trim().replace(/\\/$/, '');
+    const key = ($('key')?.value || '').trim();
+    if (!/^https:\\/\\/[^\\s]+\\.supabase\\.co$/i.test(url) || !key) {
+      if ($('status')) $('status').textContent = 'Project URLとPublishable Keyを確認してください。';
+      return;
+    }
+    SUPABASE_URL = url;
+    SUPABASE_PUBLISHABLE_KEY = key;
+    localStorage.setItem('aipri_url', url);
+    localStorage.setItem('aipri_key', key);
+    if ($('status')) $('status').textContent = '設定を保存しました。接続を確認しています…';
+    try {
+      const response = await fetch(url + '/auth/v1/health', {headers:{apikey:key}});
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      if ($('status')) $('status').textContent = '接続確認OK。ページを再読み込みしてください。';
+    } catch (error) {
+      if ($('status')) $('status').textContent = '保存しましたが接続確認に失敗しました：' + (error?.message || error);
+    }
+  });
+  $('clear')?.addEventListener('click', () => {
+    localStorage.removeItem('aipri_url');
+    localStorage.removeItem('aipri_key');
+    if ($('url')) $('url').value = '';
+    if ($('key')) $('key').value = '';
+    if ($('status')) $('status').textContent = '保存した接続設定を削除しました。';
+  });
   const pathParts = location.pathname.split('/').filter(Boolean);
   const pathShareSlug = pathParts[0] === 's' && pathParts[1] ? decodeURIComponent(pathParts[1]) : '';
   const queryShareSlug = new URLSearchParams(location.search).get('share') || '';
