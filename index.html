@@ -283,7 +283,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <label>マイキャラをこの場で新規登録（任意）<input id="newCharacterInline" maxlength="100" placeholder="例：いのり"></label>
       <label>マイキャラの姿<input id="cardAppearance" maxlength="100" placeholder="例：通常、ツインテール、ボブ"></label>
       <label>コーデの弾数・シリーズ<input id="cardSeries" maxlength="100" placeholder="例：1弾、プリマジ、アイカツ！ など"><span class="hint">自由に入力できます。シリーズ名や作品名も登録できます。</span></label>
-      <label>写真の向き<select id="photoOrientation"><option value="portrait">縦向き</option><option value="landscape">横向き</option></select><span class="hint">写真を登録する前に、縦向き・横向きを選んでね。</span></label>\n      <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択した向きに合わせて切り取りできます。</span></label>
+      <label>写真の向き<select id="photoOrientation"><option value="portrait">縦向き</option><option value="landscape">横向き</option></select><span class="hint">写真を登録する前に、縦向き・横向きを選んでね。</span></label>
+      <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択した向きに合わせて切り取りできます。</span></label>
       <label>フレンドコード（QRコード）の画像<input id="cardQr" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・写真とは別に保存。QR全体が入るように切り取りできます。</span></label>
       <label>メモ（任意）<textarea id="cardMemo" rows="3" maxlength="1000" placeholder="自由にメモ"></textarea></label>
       <label class="switchrow"><input id="cardPublicToggle" type="checkbox"> このフレカを共有ページに公開する</label><p class="hint">OFFにすると、このフレカは共有ページに表示されません。あとから変更できます。</p>
@@ -554,7 +555,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   }
   cropCanvas.addEventListener('pointerdown',e=>{
     if(!cropState)return;
-    e.preventDefault();cropCanvas.setPointerCapture(e.pointerId);cropPointers.set(e.pointerId,getCropPoint(e));startCropGesture();
+    e.preventDefault();try{cropCanvas.setPointerCapture(e.pointerId);}catch(_){}cropPointers.set(e.pointerId,getCropPoint(e));startCropGesture();
   });
   cropCanvas.addEventListener('pointermove',e=>{
     if(!cropState||!cropPointers.has(e.pointerId))return;
@@ -563,7 +564,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(pts.length>=2&&cropGesture?.mode==='pinch'){
       const dist=pointerDistance(pts[0],pts[1]);
       cropState.zoom=clamp(cropGesture.zoom*(dist/Math.max(1,cropGesture.distance)),1,4);
-      cropState.panX=cropGesture.panX;cropState.panY=cropGesture.panY;drawCropPreview();
+      const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};cropState.panX=cropGesture.panX+(mid.x-cropGesture.mid.x);cropState.panY=cropGesture.panY+(mid.y-cropGesture.mid.y);drawCropPreview();
     }else if(pts.length===1&&cropGesture?.mode==='drag'){
       const p=pts[0];
       cropState.panX=cropGesture.panX+(p.x-cropGesture.point.x)*0.85;
