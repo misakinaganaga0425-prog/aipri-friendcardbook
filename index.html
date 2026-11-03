@@ -357,9 +357,9 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   $('openSettings')?.addEventListener('click', settingsOpen);
   $('closeSettings')?.addEventListener('click', settingsClose);
   $('save')?.addEventListener('click', async () => {
-    const url = ($('url')?.value || '').trim().replace(/\\/$/, '');
+    const url = ($('url')?.value || '').trim().replace(/\/$/, '');
     const key = ($('key')?.value || '').trim();
-    if (!/^https:\\/\\/[^\\s]+\\.supabase\\.co$/i.test(url) || !key) {
+    if (!/^https:\/\/[^\s]+\.supabase\.co$/i.test(url) || !key) {
       if ($('status')) $('status').textContent = 'Project URLとPublishable Keyを確認してください。';
       return;
     }
