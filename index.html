@@ -186,15 +186,15 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 /* Keep the selected registration mode visibly pale, overriding global button/theme rules. */
 .registerModeTabs button.active,
 .registerModeTabs button[aria-selected="true"] {
-  background: #dff5ff !important;
-  border-color: #8ed5f0 !important;
-  color: #236f90 !important;
+  background: var(--theme-active) !important;
+  border-color: var(--blue) !important;
+  color: var(--theme-accent) !important;
   box-shadow: none !important;
 }
 .registerModeTabs button:not(.active):not([aria-selected="true"]) {
-  background: #79c8e7 !important;
-  border-color: #79c8e7 !important;
-  color: #164d68 !important;
+  background: var(--theme-button) !important;
+  border-color: var(--theme-button) !important;
+  color: var(--theme-button-text) !important;
 }
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
