@@ -718,9 +718,22 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       }
     });
   }
+  const signedImageUrlCache=new Map();
+  async function preloadSignedImageUrls(cardRows){
+    if(!client||!Array.isArray(cardRows))return;
+    const paths=[...new Set(cardRows.flatMap(card=>{const d=card.card_data||{};return [d.photo_path,d.qr_path].filter(Boolean);}))]
+      .filter(path=>!signedImageUrlCache.has(path));
+    if(!paths.length)return;
+    const {data,error}=await client.storage.from(BUCKET).createSignedUrls(paths,3600);
+    if(error){console.warn('画像URLの取得に失敗しました',error.message);return;}
+    (data||[]).forEach((item,index)=>{if(item?.signedUrl)signedImageUrlCache.set(paths[index],item.signedUrl);});
+  }
   async function signedImageUrl(path){
-    if(!path||!client)return null;const {data,error}=await client.storage.from(BUCKET).createSignedUrl(path,3600);
-    if(error){console.warn('画像を読み込めませんでした',error.message);return null;}return data?.signedUrl||null;
+    if(!path||!client)return null;
+    if(signedImageUrlCache.has(path))return signedImageUrlCache.get(path);
+    const {data,error}=await client.storage.from(BUCKET).createSignedUrl(path,3600);
+    if(error){console.warn('画像を読み込めませんでした',error.message);return null;}
+    const url=data?.signedUrl||null;if(url)signedImageUrlCache.set(path,url);return url;
   }
   function appendText(parent,tag,text,className){const el=document.createElement(tag);el.textContent=escapeText(text);if(className)el.className=className;parent.appendChild(el);return el;}
   async function renderCardMedia(photoStage,qrStage,data){
@@ -797,7 +810,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(!client||!currentUser)return;
     const {data,error}=await client.from('cards').select('id,card_name,card_data,character_id,is_public,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false});
     if(error){message('cardRegisterStatus','読み込みエラー：'+error.message);return;}
-    cards=data||[];message('cardCount',String(cards.length));updateSeriesFilterOptions();renderCards();renderManageCards();
+    cards=data||[];message('cardCount',String(cards.length));updateSeriesFilterOptions();await preloadSignedImageUrls(cards);renderCards();renderManageCards();
   }
   function renderCharacters(){
     const list=$('charsList');if(!list)return;list.replaceChildren();
@@ -844,6 +857,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     });
     const count=$('sharedSearchResultCount');if(count)count.textContent=visible.length+' 枚';
     if(!visible.length){appendText(list,'p',cards.length?'条件に合うフレカがありません。':'公開されているフレカはありません。','muted');return;}
+    await preloadSignedImageUrls(visible);
+    const mediaJobs=[];
     for(const card of visible){
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id);
       const item=document.createElement('article');item.className='catalogueCard';
@@ -857,8 +872,9 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       appendText(details,'div',(d.appearance||'姿未設定')+' ver.','appearanceName');
       if(d.series)appendText(details,'div',d.series,'muted');
       bottom.appendChild(details);item.appendChild(bottom);list.appendChild(item);
-      await renderCardMedia(photo,qr,d);
+      mediaJobs.push(renderCardMedia(photo,qr,d));
     }
+    await Promise.all(mediaJobs);
   }
   async function loadSharedCollection(){
     const status=$('sharedStatus'); if(status)status.textContent='図鑑を読み込んでいます…';
