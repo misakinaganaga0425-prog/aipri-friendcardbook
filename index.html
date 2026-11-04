@@ -182,20 +182,6 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 @media(max-width:420px){#registeredCardsPanel .manageSearchPanel .filterGrid,#sharedCardSearchPanel .filterGrid{grid-template-columns:1fr;gap:0}}
 @media(max-width:360px){#sharedCardsList{gap:7px}#sharedCardsList .catalogueCard{padding:7px}#sharedCardsList .catalogueCard .cardBottom{gap:4px}}
 
-
-/* Keep the selected registration mode visibly pale, overriding global button/theme rules. */
-.registerModeTabs button.active,
-.registerModeTabs button[aria-selected="true"] {
-  background: var(--theme-active) !important;
-  border-color: var(--blue) !important;
-  color: var(--theme-accent) !important;
-  box-shadow: none !important;
-}
-.registerModeTabs button:not(.active):not([aria-selected="true"]) {
-  background: var(--theme-button) !important;
-  border-color: var(--theme-button) !important;
-  color: var(--theme-button-text) !important;
-}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -218,11 +204,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <p id="status" role="status" aria-live="polite"></p>
     <button id="clear" class="secondary" type="button">保存した接続設定を削除</button>
   </section>
-  <button id="openSettings" class="secondary" type="button" style="display:block;margin:4px 12px 8px auto;padding:4px 8px;font-size:10px;opacity:.45;border:0;background:transparent;box-shadow:none">⚙ 接続設定</button>
+  <button id="openSettings" class="secondary" type="button" style="display:block;margin:10px auto">Supabase接続設定</button>
   <nav class="tabs" aria-label="メインメニュー">
     <button class="active" data-nav="home">⌂<small>ホーム</small></button>
     <button data-nav="search">⌕<small>フレカ検索</small></button>
-    <button data-nav="register">✎<small>フレカ編集</small></button>
+    <button data-nav="register">＋<small>フレカ登録</small></button>
     <button data-nav="share">↗<small>共有</small></button>
   </nav>
   <section id="home" class="view">
@@ -297,8 +283,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <label>マイキャラをこの場で新規登録（任意）<input id="newCharacterInline" maxlength="100" placeholder="例：いのり"></label>
       <label>マイキャラの姿<input id="cardAppearance" maxlength="100" placeholder="例：通常、ツインテール、ボブ"></label>
       <label>コーデの弾数・シリーズ<input id="cardSeries" maxlength="100" placeholder="例：1弾、プリマジ、アイカツ！ など"><span class="hint">自由に入力できます。シリーズ名や作品名も登録できます。</span></label>
-      <label>写真の向き<select id="photoOrientation"><option value="portrait">縦向き</option><option value="landscape">横向き</option></select><span class="hint">写真を登録する前に、縦向き・横向きを選んでね。</span></label>
-      <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択した向きに合わせて切り取りできます。</span></label>
+      <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択後に切り取り位置や拡大率を調整できます。</span></label>
       <label>フレンドコード（QRコード）の画像<input id="cardQr" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・写真とは別に保存。QR全体が入るように切り取りできます。</span></label>
       <label>メモ（任意）<textarea id="cardMemo" rows="3" maxlength="1000" placeholder="自由にメモ"></textarea></label>
       <label class="switchrow"><input id="cardPublicToggle" type="checkbox"> このフレカを共有ページに公開する</label><p class="hint">OFFにすると、このフレカは共有ページに表示されません。あとから変更できます。</p>
@@ -505,9 +490,29 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if (password.length < 8 || password.length > 128) return message('authStatus', 'パスワードは8〜128文字にしてください。');
     const url = SUPABASE_URL, key = SUPABASE_PUBLISHABLE_KEY;
     message('authStatus', '新規登録しています…');
-    const response = await fetch(url.replace(/\/+$/, '') + '/functions/v1/smart-task', { method:'POST', headers:{'Content-Type':'application/json', apikey:key, Authorization:'Bearer '+key}, body:JSON.stringify({username,password,displayName:username}) });
-    let result; try { result = await response.json(); } catch { throw new Error('サーバーから正しい応答がありませんでした。'); }
-    if (!response.ok || !result.success) return message('authStatus', '登録できませんでした：' + (result.error || ('HTTP '+response.status)));
+    let response;
+    try {
+      response = await fetch(url.replace(/\/+$/, '') + '/functions/v1/smart-task', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', apikey:key, Authorization:'Bearer '+key},
+        body:JSON.stringify({username,password,displayName:username})
+      });
+    } catch (error) {
+      console.error('新規登録の通信エラー', error);
+      const detail = error?.message || String(error);
+      return message('authStatus', '登録サーバーに接続できませんでした（' + detail + '）。時間をおいて再試行してください。');
+    }
+    let result;
+    try { result = await response.json(); }
+    catch (error) {
+      console.error('新規登録サーバーの応答を解析できません', error);
+      return message('authStatus', '登録サーバーの応答を読み取れませんでした（HTTP ' + response.status + '）。');
+    }
+    if (!response.ok || !result.success) {
+      const detail = result.error || result.message || ('HTTP ' + response.status);
+      console.error('新規登録サーバーエラー', response.status, detail);
+      return message('authStatus', '登録できませんでした（HTTP ' + response.status + '）：' + detail);
+    }
     message('authStatus', '登録できました。同じIDとパスワードでログインしてください。');
   }
   async function signIn() {
@@ -569,7 +574,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   }
   cropCanvas.addEventListener('pointerdown',e=>{
     if(!cropState)return;
-    e.preventDefault();try{cropCanvas.setPointerCapture(e.pointerId);}catch(_){}cropPointers.set(e.pointerId,getCropPoint(e));startCropGesture();
+    e.preventDefault();cropCanvas.setPointerCapture(e.pointerId);cropPointers.set(e.pointerId,getCropPoint(e));startCropGesture();
   });
   cropCanvas.addEventListener('pointermove',e=>{
     if(!cropState||!cropPointers.has(e.pointerId))return;
@@ -578,7 +583,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(pts.length>=2&&cropGesture?.mode==='pinch'){
       const dist=pointerDistance(pts[0],pts[1]);
       cropState.zoom=clamp(cropGesture.zoom*(dist/Math.max(1,cropGesture.distance)),1,4);
-      const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};cropState.panX=cropGesture.panX+(mid.x-cropGesture.mid.x);cropState.panY=cropGesture.panY+(mid.y-cropGesture.mid.y);drawCropPreview();
+      cropState.panX=cropGesture.panX;cropState.panY=cropGesture.panY;drawCropPreview();
     }else if(pts.length===1&&cropGesture?.mode==='drag'){
       const p=pts[0];
       cropState.panX=cropGesture.panX+(p.x-cropGesture.point.x)*0.85;
@@ -597,7 +602,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     reader.onload=()=>{
       const img=new Image();
       img.onload=()=>{
-        const isQr=input.id==='cardQr',ratio=isQr?1:($('photoOrientation').value==='landscape'?1027/662:0.75);
+        const isQr=input.id==='cardQr',ratio=isQr?1:0.75;
         cropCanvas.width=900;cropCanvas.height=Math.round(900/ratio);
         cropState={img,file,input,ratio,zoom:1,panX:0,panY:0};
         cropPointers.clear();cropGesture=null;
@@ -630,7 +635,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   $('cropModal').addEventListener('click',e=>{if(e.target===$('cropModal'))$('cancelCrop').click();});
 
   function getCardDataFields(){
-    return {color:$('cardColor').value.trim(),appearance:$('cardAppearance').value.trim(),series:$('cardSeries').value.trim(),memo:$('cardMemo').value.trim(),photo_orientation:$('photoOrientation').value||'portrait'};
+    return {color:$('cardColor').value.trim(),appearance:$('cardAppearance').value.trim(),series:$('cardSeries').value.trim(),memo:$('cardMemo').value.trim()};
   }
   function validImage(file,label){
     if(!file)return true;
@@ -648,11 +653,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   let editingCardId=null;
   function resetCardForm(){
     ['newCardName','cardColor','newCharacterInline','cardAppearance','cardSeries','cardMemo','cardPhoto','cardQr'].forEach(id=>{if($(id))$(id).value='';});
-    $('cardPublicToggle').checked=false;$('photoOrientation').value='portrait';$('cardCharacter').value='';editingCardId=null;$('addCard').textContent='フレカを登録';$('cancelCardEdit').classList.add('hidden');
+    $('cardPublicToggle').checked=false;$('cardCharacter').value='';editingCardId=null;$('addCard').textContent='フレカを登録';$('cancelCardEdit').classList.add('hidden');
   }
   function beginEditCard(card){
     setRegisterMode('add');
-    const d=card.card_data||{};editingCardId=card.id;$('newCardName').value=card.card_name||'';$('cardColor').value=d.color||'';$('cardCharacter').value=card.character_id||'';$('newCharacterInline').value='';$('cardAppearance').value=d.appearance||'';$('cardSeries').value=d.series||'';$('cardMemo').value=d.memo||'';$('photoOrientation').value=d.photo_orientation||'portrait';$('cardPublicToggle').checked=card.is_public!==false;$('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');$('cardRegisterPanel').scrollIntoView({behavior:'smooth',block:'start'});message('cardRegisterStatus','編集モードです。写真・QRを選び直さなければ現在の画像を維持します。');
+    const d=card.card_data||{};editingCardId=card.id;$('newCardName').value=card.card_name||'';$('cardColor').value=d.color||'';$('cardCharacter').value=card.character_id||'';$('newCharacterInline').value='';$('cardAppearance').value=d.appearance||'';$('cardSeries').value=d.series||'';$('cardMemo').value=d.memo||'';$('cardPublicToggle').checked=card.is_public!==false;$('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');$('cardRegisterPanel').scrollIntoView({behavior:'smooth',block:'start'});message('cardRegisterStatus','編集モードです。写真・QRを選び直さなければ現在の画像を維持します。');
   }
   async function addCard(){
     if(!currentUser)return message('cardRegisterStatus','先にホームでログインしてください。');
@@ -718,22 +723,9 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       }
     });
   }
-  const signedImageUrlCache=new Map();
-  async function preloadSignedImageUrls(cardRows){
-    if(!client||!Array.isArray(cardRows))return;
-    const paths=[...new Set(cardRows.flatMap(card=>{const d=card.card_data||{};return [d.photo_path,d.qr_path].filter(Boolean);}))]
-      .filter(path=>!signedImageUrlCache.has(path));
-    if(!paths.length)return;
-    const {data,error}=await client.storage.from(BUCKET).createSignedUrls(paths,3600);
-    if(error){console.warn('画像URLの取得に失敗しました',error.message);return;}
-    (data||[]).forEach((item,index)=>{if(item?.signedUrl)signedImageUrlCache.set(paths[index],item.signedUrl);});
-  }
   async function signedImageUrl(path){
-    if(!path||!client)return null;
-    if(signedImageUrlCache.has(path))return signedImageUrlCache.get(path);
-    const {data,error}=await client.storage.from(BUCKET).createSignedUrl(path,3600);
-    if(error){console.warn('画像を読み込めませんでした',error.message);return null;}
-    const url=data?.signedUrl||null;if(url)signedImageUrlCache.set(path,url);return url;
+    if(!path||!client)return null;const {data,error}=await client.storage.from(BUCKET).createSignedUrl(path,3600);
+    if(error){console.warn('画像を読み込めませんでした',error.message);return null;}return data?.signedUrl||null;
   }
   function appendText(parent,tag,text,className){const el=document.createElement(tag);el.textContent=escapeText(text);if(className)el.className=className;parent.appendChild(el);return el;}
   async function renderCardMedia(photoStage,qrStage,data){
@@ -810,7 +802,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(!client||!currentUser)return;
     const {data,error}=await client.from('cards').select('id,card_name,card_data,character_id,is_public,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false});
     if(error){message('cardRegisterStatus','読み込みエラー：'+error.message);return;}
-    cards=data||[];message('cardCount',String(cards.length));updateSeriesFilterOptions();await preloadSignedImageUrls(cards);renderCards();renderManageCards();
+    cards=data||[];message('cardCount',String(cards.length));updateSeriesFilterOptions();renderCards();renderManageCards();
   }
   function renderCharacters(){
     const list=$('charsList');if(!list)return;list.replaceChildren();
@@ -857,8 +849,6 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     });
     const count=$('sharedSearchResultCount');if(count)count.textContent=visible.length+' 枚';
     if(!visible.length){appendText(list,'p',cards.length?'条件に合うフレカがありません。':'公開されているフレカはありません。','muted');return;}
-    await preloadSignedImageUrls(visible);
-    const mediaJobs=[];
     for(const card of visible){
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id);
       const item=document.createElement('article');item.className='catalogueCard';
@@ -872,9 +862,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       appendText(details,'div',(d.appearance||'姿未設定')+' ver.','appearanceName');
       if(d.series)appendText(details,'div',d.series,'muted');
       bottom.appendChild(details);item.appendChild(bottom);list.appendChild(item);
-      mediaJobs.push(renderCardMedia(photo,qr,d));
+      await renderCardMedia(photo,qr,d);
     }
-    await Promise.all(mediaJobs);
   }
   async function loadSharedCollection(){
     const status=$('sharedStatus'); if(status)status.textContent='図鑑を読み込んでいます…';
