@@ -185,17 +185,21 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<style id="my-character-list-layout-fix">
-#charsList{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
-#charsList>.item{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:stretch;padding:14px;border:1px solid #cce8f5;border-radius:18px;background:linear-gradient(135deg,#fff,#f3fbff);min-width:0}
-#charsList .itemInfo{width:100%;min-width:0}
-#charsList .itemInfo strong{display:block;width:100%;min-width:0;font-size:20px;line-height:1.4;overflow-wrap:break-word;word-break:normal}
-#charsList .itemInfo p{overflow-wrap:anywhere}
-#charsList .item .buttonRow{display:grid;grid-template-columns:minmax(0,1fr) minmax(72px,auto);gap:8px;width:100%}
-#charsList .item .buttonRow button{min-width:0;white-space:normal;overflow-wrap:normal;word-break:keep-all;padding:10px 8px;font-size:13px}
-#charsList .item .buttonRow .danger{min-width:72px}
-@media(min-width:560px){#charsList{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:380px){#charsList .item{padding:12px}#charsList .itemInfo strong{font-size:18px}#charsList .item .buttonRow{grid-template-columns:minmax(0,1fr) 66px}#charsList .item .buttonRow button{font-size:12px;padding:9px 5px}}
+<style id="character-detail-design">
+#charsList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#charsList .characterTile{display:flex;flex-direction:column;align-items:center;gap:9px;padding:12px;border:1px solid #d8edf8;border-radius:18px;background:#fff;min-width:0;text-align:center}
+#charsList .characterTile .characterThumb{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:12px;background:#eef8fd}
+#charsList .characterTile .characterThumbPlaceholder{width:100%;aspect-ratio:3/4;display:grid;place-items:center;background:#eef8fd;border-radius:12px;color:#7795a6;font-size:13px}
+#charsList .characterTile strong{font-size:16px;overflow-wrap:anywhere}
+#charsList .characterTile button{width:100%;font-size:13px;padding:9px 5px}
+.characterDetail{background:#fff;border-radius:28px;padding:22px 16px;text-align:center}
+.characterDetail h2{color:#7895cf;font-size:26px;margin:0 0 14px}
+.characterDetail .detailName{color:#7895cf;font-size:24px;font-weight:800;margin:0 0 12px}
+.characterDetail .detailPhoto{display:block;width:min(100%,370px);max-height:62vh;object-fit:contain;margin:0 auto 16px;border-radius:12px}
+.characterDetail .detailPlaceholder{width:min(100%,300px);aspect-ratio:3/4;margin:0 auto 16px;border-radius:12px;background:#eef8fd;display:grid;place-items:center;color:#7895a6}
+.characterDetail .detailActions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.characterDetail .detailActions button{background:#eaf0ff;color:#6e8dc8;border-radius:0;padding:12px 16px;font-weight:700}
+.characterDetail .backButton{display:block;margin:0 auto 14px;background:transparent;color:#678ca0}
 </style>
 </head>
 <body>
@@ -318,7 +322,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   </section>
     <section id="characters" class="view hidden">
     <div class="sectionHeading"><div><span class="eyebrow">MY CHARACTERS</span><h2>マイキャラ</h2></div></div>
-    <section class="panel"><h3>マイキャラ一覧</h3><p class="hint">同じキャラに複数の姿がある場合は、フレカごとに「マイキャラの姿」を登録できます。</p><div id="charsList" class="itemList"></div></section>
+    <section class="panel"><h3>マイキャラ一覧</h3><p class="hint">キャラをタップすると、画像とフレカを確認できます。</p><div id="charsList" class="itemList"></div></section>
+    <section id="characterDetail" class="characterDetail hidden" aria-live="polite"></section>
   </section>
   <section id="share" class="view hidden">
     <div class="sectionHeading"><div><span class="eyebrow" id="shareEyebrow">MY FRIEND CARDS</span><h2 id="shareHeading">フレカ図鑑</h2></div></div>
@@ -821,18 +826,45 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(!currentUser){appendText(list,'p','ログインするとマイキャラを表示できます。','muted');return;}
     if(!characters.length){appendText(list,'p','マイキャラはまだ登録されていません。','muted');return;}
     characters.forEach(character=>{
-      const item=document.createElement('article');item.className='item';const info=document.createElement('div');info.className='itemInfo';appendText(info,'strong',character.character_name);if(character.character_data?.memo)appendText(info,'p',character.character_data.memo);
-      const actions=document.createElement('div');actions.className='buttonRow';actions.style.marginTop='0';
-      const edit=document.createElement('button');edit.className='secondary';edit.textContent='名前・メモ編集';edit.addEventListener('click',()=>{
-        const name=prompt('マイキャラ名',character.character_name);if(name===null)return;if(!name.trim())return alert('名前を入力してください。');
-        const memo=prompt('メモ（任意）',character.character_data?.memo||'');if(memo===null)return;
-        runSafely(async()=>{const {error}=await client.from('my_characters').update({character_name:name.trim(),character_data:{...(character.character_data||{}),memo:memo.trim()}}).eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;message('characterStatus','マイキャラを更新しました。');scheduleCloudBackup();await loadCharacters();await loadCards();});
-      });
-      const del=document.createElement('button');del.className='danger';del.textContent='削除';del.addEventListener('click',()=>runSafely(async()=>{
-        if(!confirm('「'+character.character_name+'」を削除しますか？\n紐づいたフレカのマイキャラ設定は未設定になります。'))return;
-        const {error}=await client.from('my_characters').delete().eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;message('characterStatus','マイキャラを削除しました。');scheduleCloudBackup();if(activeCharacter===character.id)activeCharacter='all';await loadCharacters();await loadCards();
-      }));actions.append(edit,del);item.append(info,actions);list.appendChild(item);
+      const item=document.createElement('article');item.className='characterTile';
+      const related=cards.find(card=>card.character_id===character.id&&card.card_data?.photo_path);
+      if(related){
+        const img=document.createElement('img');img.className='characterThumb';img.alt=character.character_name;
+        signedImageUrl(related.card_data.photo_path).then(url=>{if(url)img.src=url;else img.replaceWith(makeCharacterPlaceholder());});
+        item.appendChild(img);
+      }else item.appendChild(makeCharacterPlaceholder());
+      appendText(item,'strong',character.character_name);
+      const open=document.createElement('button');open.className='secondary';open.textContent='図鑑を見る';open.addEventListener('click',()=>showCharacterDetail(character.id));item.appendChild(open);
+      const edit=document.createElement('button');edit.className='secondary';edit.textContent='マイキャラ編集';edit.addEventListener('click',()=>editCharacter(character));item.appendChild(edit);
+      list.appendChild(item);
     });
+  }
+  function makeCharacterPlaceholder(){
+    const p=document.createElement('div');p.className='characterThumbPlaceholder';p.textContent='イメージ画像準備中';return p;
+  }
+  function editCharacter(character){
+    const name=prompt('マイキャラ名',character.character_name);if(name===null)return;if(!name.trim())return alert('名前を入力してください。');
+    const memo=prompt('メモ（任意）',character.character_data?.memo||'');if(memo===null)return;
+    runSafely(async()=>{const {error}=await client.from('my_characters').update({character_name:name.trim(),character_data:{...(character.character_data||{}),memo:memo.trim()}}).eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;message('characterStatus','マイキャラを更新しました。');scheduleCloudBackup();await loadCharacters();await loadCards();});
+  }
+  async function showCharacterDetail(characterId){
+    const character=characters.find(c=>c.id===characterId);if(!character)return;
+    const detail=$('characterDetail');if(!detail)return;
+    detail.replaceChildren();detail.classList.remove('hidden');
+    const back=document.createElement('button');back.className='backButton';back.textContent='← マイキャラ一覧';back.addEventListener('click',()=>{detail.classList.add('hidden');$('charsList').classList.remove('hidden');});detail.appendChild(back);
+    appendText(detail,'h2','マイキャラ図鑑');
+    appendText(detail,'p',character.character_name,'detailName');
+    const related=cards.filter(card=>card.character_id===character.id&&card.card_data?.photo_path);
+    if(related.length){
+      const img=document.createElement('img');img.className='detailPhoto';img.alt=character.character_name+'の姿';
+      detail.appendChild(img);const url=await signedImageUrl(related[0].card_data.photo_path);if(url)img.src=url;else img.replaceWith(makeCharacterPlaceholder());
+    }else{const p=document.createElement('div');p.className='detailPlaceholder';p.textContent='イメージ画像準備中';detail.appendChild(p);}
+    if(character.character_data?.memo)appendText(detail,'p',character.character_data.memo,'hint');
+    const actions=document.createElement('div');actions.className='detailActions';
+    const edit=document.createElement('button');edit.textContent='マイキャラ編集';edit.addEventListener('click',()=>editCharacter(character));
+    const cardsButton=document.createElement('button');cardsButton.textContent=character.character_name+'のフレカ';cardsButton.addEventListener('click',()=>{activeCharacter=character.id;showView('search');renderCharacterChips();renderCards();});
+    actions.append(edit,cardsButton);detail.appendChild(actions);
+    $('charsList').classList.add('hidden');detail.scrollIntoView({behavior:'smooth',block:'start'});
   }
   async function loadCharacters(){
     if(!client||!currentUser)return;
