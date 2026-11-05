@@ -182,6 +182,18 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 @media(max-width:420px){#registeredCardsPanel .manageSearchPanel .filterGrid,#sharedCardSearchPanel .filterGrid{grid-template-columns:1fr;gap:0}}
 @media(max-width:360px){#sharedCardsList{gap:7px}#sharedCardsList .catalogueCard{padding:7px}#sharedCardsList .catalogueCard .cardBottom{gap:4px}}
 
+
+.tabs{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;padding:6px}
+.tabs button{min-width:0;padding:7px 1px;font-size:19px}
+.tabs button small{font-size:clamp(9px,2.7vw,11px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.characterProfile{text-align:center;padding:8px 0 4px}
+.characterProfile h2{font-size:clamp(25px,7vw,36px);color:#7898d6;margin:6px 0 12px}
+.characterProfile .profilePhoto{width:min(100%,360px);aspect-ratio:3/4;object-fit:contain;display:block;margin:0 auto 14px;border-radius:14px;background:#f1faff}
+.characterProfile .profilePlaceholder{width:min(100%,360px);aspect-ratio:3/4;display:grid;place-items:center;margin:0 auto 14px;border:2px dashed #9db8e9;border-radius:14px;color:#7898a8;background:#f5fbff}
+.characterProfile .profileActions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.characterProfile .profileActions button{min-width:0;padding:10px 6px}
+.characterPick{cursor:pointer}
+@media(max-width:380px){.tabs{gap:3px;padding:5px}.tabs button small{font-size:9px}}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -207,6 +219,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   <button id="openSettings" class="secondary" type="button" style="display:block;margin:10px auto">Supabase接続設定</button>
   <nav class="tabs" aria-label="メインメニュー">
     <button class="active" data-nav="home">⌂<small>ホーム</small></button>
+    <button data-nav="characters">♡<small>マイキャラ図鑑</small></button>
     <button data-nav="characters">♡<small>マイキャラ図鑑</small></button>
     <button data-nav="search">⌕<small>フレカ検索</small></button>
     <button data-nav="register">＋<small>フレカ登録</small></button>
@@ -307,7 +320,10 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   </section>
     <section id="characters" class="view hidden">
     <div class="sectionHeading"><div><span class="eyebrow">MY CHARACTERS</span><h2>マイキャラ</h2></div></div>
-    <section class="panel"><h3>マイキャラ一覧</h3><p class="hint">同じキャラに複数の姿がある場合は、フレカごとに「マイキャラの姿」を登録できます。</p><div id="charsList" class="itemList"></div></section>
+    <section class="panel characterCataloguePanel">
+      <div id="characterCatalogue"><h3>マイキャラ一覧</h3><p class="hint">キャラを選ぶとプロフィールを表示します。</p><div id="charsList" class="itemList"></div></div>
+      <div id="characterProfile" class="characterProfile hidden"></div>
+    </section>
   </section>
   <section id="share" class="view hidden">
     <div class="sectionHeading"><div><span class="eyebrow" id="shareEyebrow">MY FRIEND CARDS</span><h2 id="shareHeading">フレカ図鑑</h2></div></div>
@@ -805,12 +821,27 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(error){message('cardRegisterStatus','読み込みエラー：'+error.message);return;}
     cards=data||[];message('cardCount',String(cards.length));updateSeriesFilterOptions();renderCards();renderManageCards();
   }
+  function showCharacterProfile(character){
+    const catalogue=$('characterCatalogue'),profile=$('characterProfile');if(!catalogue||!profile)return;
+    catalogue.classList.add('hidden');profile.classList.remove('hidden');profile.replaceChildren();
+    const title=document.createElement('h2');title.textContent='マイキャラ図鑑';profile.appendChild(title);
+    const name=document.createElement('h2');name.textContent=character.character_name;profile.appendChild(name);
+    const related=cards.filter(card=>card.character_id===character.id);
+    const withPhoto=related.find(card=>card.card_data?.photo_path);
+    const stage=document.createElement('div');
+    if(withPhoto){stage.className='profilePhoto';stage.textContent='読み込み中…';profile.appendChild(stage);signedImageUrl(withPhoto.card_data.photo_path).then(url=>{if(url){const img=document.createElement('img');img.className='profilePhoto';img.src=url;img.alt=character.character_name;stage.replaceWith(img);}else stage.textContent='イメージ画像準備中';}).catch(()=>stage.textContent='イメージ画像準備中');}
+    else{stage.className='profilePlaceholder';stage.textContent='イメージ画像準備中';profile.appendChild(stage);}
+    const actions=document.createElement('div');actions.className='profileActions';
+    const edit=document.createElement('button');edit.className='secondary';edit.textContent='マイキャラ編集';edit.addEventListener('click',()=>{catalogue.classList.remove('hidden');profile.classList.add('hidden');const original=$('charsList').querySelector('.characterPick');if(original)original.querySelector('button')?.click();});
+    const cardsButton=document.createElement('button');cardsButton.className='secondary';cardsButton.textContent=character.character_name+'のフレカ';cardsButton.addEventListener('click',()=>{activeCharacter=character.id;showView('search');renderCharacterChips();renderCards();});
+    actions.append(edit,cardsButton);profile.appendChild(actions);
+  }
   function renderCharacters(){
     const list=$('charsList');if(!list)return;list.replaceChildren();
     if(!currentUser){appendText(list,'p','ログインするとマイキャラを表示できます。','muted');return;}
     if(!characters.length){appendText(list,'p','マイキャラはまだ登録されていません。','muted');return;}
     characters.forEach(character=>{
-      const item=document.createElement('article');item.className='item';const info=document.createElement('div');info.className='itemInfo';appendText(info,'strong',character.character_name);if(character.character_data?.memo)appendText(info,'p',character.character_data.memo);
+      const item=document.createElement('article');item.className='item characterPick';item.addEventListener('click',()=>showCharacterProfile(character));const info=document.createElement('div');info.className='itemInfo';appendText(info,'strong',character.character_name);if(character.character_data?.memo)appendText(info,'p',character.character_data.memo);
       const actions=document.createElement('div');actions.className='buttonRow';actions.style.marginTop='0';
       const edit=document.createElement('button');edit.className='secondary';edit.textContent='名前・メモ編集';edit.addEventListener('click',()=>{
         const name=prompt('マイキャラ名',character.character_name);if(name===null)return;if(!name.trim())return alert('名前を入力してください。');
