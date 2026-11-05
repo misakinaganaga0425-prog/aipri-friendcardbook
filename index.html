@@ -864,6 +864,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   function renderCharacterDetail(character){
     const list=$('charsList');if(!list)return;list.replaceChildren();const d=character.character_data||{};activeCharacter=character.id;applyCharacterTheme(character.id);
     const color=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';
+    const rgb=color.match(/[0-9a-f]{2}/gi).map(v=>parseInt(v,16));
+    const darkColor='#'+rgb.map(v=>Math.max(25,Math.round(v*.48)).toString(16).padStart(2,'0')).join('');
     const motifs={cute:'♡ ୨୧ ♡',cool:'◇ ✦ ◇',pop:'★ ✧ ★',sexy:'♤ ♡ ♤',elegant:'❀ ･ ❀',gothic:'☾ ✧ ☽',natural:'❋ ❀ ❋',fantasy:'✧･ﾟ ✦ ﾟ･✧'};
     const motif=motifs[d.sheet_style||'cute']||motifs.cute;
     const panel=document.createElement('article');panel.className='panel characterDetail';panel.style.cssText='margin-top:12px;padding:0;overflow:hidden;border:1px solid '+color+'88;border-radius:26px;background:linear-gradient(160deg,'+color+'18,#fff 42%,'+color+'12);box-shadow:0 10px 30px '+color+'22;color:'+darkColor+';position:relative';
