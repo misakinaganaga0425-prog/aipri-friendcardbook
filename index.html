@@ -727,6 +727,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   function applyCharacterTheme(characterId=activeCharacter){
     const c=characters.find(x=>x.id===characterId),d=c?.character_data||{};
     const color=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';
+    const rgb=color.match(/[0-9a-f]{2}/gi).map(v=>parseInt(v,16));
+    const darkColor='#'+rgb.map(v=>Math.max(25,Math.round(v*.48)).toString(16).padStart(2,'0')).join('');
     document.documentElement.style.setProperty('--theme-accent',color);
     document.documentElement.style.setProperty('--theme-active',color+'33');
     document.documentElement.style.setProperty('--theme-panel',color+'12');
@@ -864,42 +866,42 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     const color=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';
     const motifs={cute:'♡ ୨୧ ♡',cool:'◇ ✦ ◇',pop:'★ ✧ ★',sexy:'♤ ♡ ♤',elegant:'❀ ･ ❀',gothic:'☾ ✧ ☽',natural:'❋ ❀ ❋',fantasy:'✧･ﾟ ✦ ﾟ･✧'};
     const motif=motifs[d.sheet_style||'cute']||motifs.cute;
-    const panel=document.createElement('article');panel.className='panel characterDetail';panel.style.cssText='margin-top:12px;padding:0;overflow:hidden;border:1px solid '+color+'88;border-radius:26px;background:linear-gradient(160deg,'+color+'18,#fff 42%,'+color+'12);box-shadow:0 10px 30px '+color+'22;color:#394c5b';
-    const heading=document.createElement('header');heading.style.cssText='position:relative;padding:22px 16px 18px;text-align:center;background:linear-gradient(145deg,'+color+'44,'+color+'20,#fff);border-bottom:2px solid '+color+';'
-    const motifEl=document.createElement('div');motifEl.textContent=motif;motifEl.style.cssText='color:'+color+';font-size:20px;letter-spacing:4px;font-weight:900;margin-bottom:5px';
-    const name=document.createElement('h2');name.textContent=character.character_name;name.style.cssText='margin:0;color:#34495a;font-size:clamp(24px,6vw,32px);font-weight:900;overflow-wrap:anywhere;text-shadow:0 1px #fff';
-    const subtitle=document.createElement('div');subtitle.textContent='MY CHARACTER PROFILE';subtitle.style.cssText='margin-top:7px;color:#526b7c;font-size:10px;letter-spacing:.18em;font-weight:900';
+    const panel=document.createElement('article');panel.className='panel characterDetail';panel.style.cssText='margin-top:12px;padding:0;overflow:hidden;border:1px solid '+color+'88;border-radius:26px;background:linear-gradient(160deg,'+color+'18,#fff 42%,'+color+'12);box-shadow:0 10px 30px '+color+'22;color:'+darkColor+';position:relative';
+    const heading=document.createElement('header');heading.style.cssText='position:relative;padding:24px 16px 20px;text-align:center;background:radial-gradient(circle at 10% 20%,'+color+'35 0 2px,transparent 3px),radial-gradient(circle at 90% 25%,'+color+'35 0 2px,transparent 3px),linear-gradient(145deg,'+color+'55,'+color+'20,#fff);border-bottom:3px double '+color+';'
+    const motifEl=document.createElement('div');motifEl.textContent=motif+' ୨୧';motifEl.style.cssText='color:'+darkColor+';font-size:21px;letter-spacing:4px;font-weight:900;margin-bottom:8px;text-shadow:0 1px #fff';
+    const name=document.createElement('h2');name.textContent=character.character_name;name.style.cssText='margin:0;color:'+darkColor+';font-size:clamp(24px,6vw,32px);font-weight:900;overflow-wrap:anywhere;text-shadow:0 1px #fff';
+    const subtitle=document.createElement('div');subtitle.textContent='MY CHARACTER PROFILE';subtitle.style.cssText='margin-top:7px;color:'+darkColor+';font-size:10px;letter-spacing:.18em;font-weight:900';
     heading.append(motifEl,name,subtitle);panel.appendChild(heading);
     const content=document.createElement('div');content.style.cssText='padding:14px;display:grid;gap:14px';panel.appendChild(content);
     const top=document.createElement('div');top.style.cssText='display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch';
     const coverBox=document.createElement('section');coverBox.style.cssText='min-width:0;padding:8px;border:2px solid '+color+'55;border-radius:22px;background:#fff;display:flex;flex-direction:column;justify-content:center;min-height:210px';
     const coverPath=d.main_image_path||d.image_path||d.image_url||d.image||d.photo_url||d.illustration_url;
     const introBox=document.createElement('section');introBox.style.cssText='min-width:0;padding:10px;border:2px solid '+color+'55;border-radius:22px;background:linear-gradient(145deg,#fff,'+color+'16);display:flex;flex-direction:column';
-    const introTitle=document.createElement('h3');introTitle.textContent='♡ マイキャラ紹介 ♡';introTitle.style.cssText='margin:2px 0 9px;text-align:center;color:#40596b;font-size:clamp(13px,3.5vw,17px);font-weight:900';
-    const introText=document.createElement('div');introText.textContent=d.intro||'紹介文はまだ登録されていません。';introText.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;flex:1;display:grid;place-items:center;text-align:center;padding:10px 6px;border-radius:16px;background:#fff;color:#394c5b;font-size:clamp(11px,3vw,14px);font-weight:700;line-height:1.8;min-height:160px';
+    const introTitle=document.createElement('h3');introTitle.textContent='♡ マイキャラ紹介 ♡';introTitle.style.cssText='margin:2px 0 9px;text-align:center;white-space:nowrap;color:'+darkColor+';font-size:clamp(11px,3vw,15px);font-weight:900;letter-spacing:-.04em';
+    const introText=document.createElement('div');introText.textContent=d.intro||'紹介文はまだ登録されていません。';introText.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;flex:1;display:grid;place-items:center;text-align:center;padding:10px 6px;border-radius:16px;background:#fff;color:'+darkColor+';font-size:clamp(11px,3vw,14px);font-weight:700;line-height:1.8;min-height:160px';
     introBox.append(introTitle,introText);top.append(coverBox,introBox);content.appendChild(top);
     if(coverPath){
       runSafely(async()=>{const url=String(coverPath).startsWith('http')?coverPath:await signedImageUrl(coverPath);if(url){const img=document.createElement('img');img.src=url;img.alt=character.character_name+'のメイン画像';img.loading='lazy';img.style.cssText='display:block;width:100%;height:100%;max-height:390px;object-fit:contain;border-radius:14px';coverBox.replaceChildren(img);}else coverBox.textContent='メイン画像を読み込めません';});
     }else{const ph=document.createElement('div');ph.textContent='メイン画像';ph.style.cssText='display:grid;place-items:center;min-height:190px;color:#64798a;font-weight:800;text-align:center';coverBox.appendChild(ph);}
-    const meta=document.createElement('section');meta.style.cssText='display:grid;grid-template-columns:1fr;gap:8px;padding:10px;border:2px solid '+color+'55;border-radius:20px;background:linear-gradient(90deg,'+color+'18,#fff)';
-    const metaRow=(label,value,icon)=>{if(!value)return;const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:minmax(100px,.85fr) minmax(0,1.4fr);gap:8px;align-items:center;padding:8px 10px;border-radius:14px;background:#fff;border:1px solid '+color+'44';const a=document.createElement('strong');a.textContent=(icon||'♡')+' '+label;a.style.cssText='color:#40596b;font-size:13px';const b=document.createElement('span');b.textContent=value;b.style.cssText='color:#394c5b;font-weight:800;font-size:13px;overflow-wrap:anywhere';row.append(a,b);meta.appendChild(row);};
-    metaRow('誕生日',d.birthday,'▦');metaRow('イメージカラー',color,'♡');metaRow('モチーフ',d.motif,'୨୧');
+    const meta=document.createElement('section');meta.style.cssText='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px;border:2px solid '+color+'66;border-radius:20px;background:linear-gradient(90deg,'+color+'20,#fff,'+color+'18)';
+    const metaCell=(label,value,kind)=>{if(!value)return;const cell=document.createElement('div');cell.style.cssText='min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border-radius:13px;background:#fff;border:1px solid '+color+'55;text-align:center';const a=document.createElement('strong');a.textContent=label;a.style.cssText='color:'+darkColor+';font-size:clamp(10px,2.8vw,12px);font-weight:900';const b=document.createElement('span');b.style.cssText='color:'+darkColor+';font-weight:900;font-size:clamp(11px,3vw,13px);overflow-wrap:anywhere';if(kind==='swatch'){b.style.cssText+='display:block;width:24px;height:24px;border-radius:50%;background:'+color+';border:2px solid #fff;box-shadow:0 0 0 1px '+darkColor+'66';b.textContent='';}else b.textContent=value;cell.append(a,b);meta.appendChild(cell);};
+    metaCell('▦ 誕生日',d.birthday);metaCell('♡ イメージカラー','', 'swatch');metaCell('୨୧ モチーフ',d.motif);
     if(meta.childElementCount)content.appendChild(meta);
     const photos=Array.isArray(d.appearance_photos)?d.appearance_photos:[];
     if(photos.length){
       const styles=document.createElement('section');styles.style.cssText='padding:13px 10px 15px;border-radius:24px;background:linear-gradient(145deg,'+color+'30,#fff,'+color+'18);border:1px solid '+color+'55';
-      const stylesTitle=document.createElement('h3');stylesTitle.textContent=motif+' スタイル紹介 '+motif;stylesTitle.style.cssText='margin:0 0 12px;text-align:center;color:#40596b;font-size:clamp(16px,4vw,20px);font-weight:900';styles.appendChild(stylesTitle);
+      const stylesTitle=document.createElement('h3');stylesTitle.textContent=motif+' スタイル紹介 '+motif;stylesTitle.style.cssText='margin:0 0 12px;text-align:center;color:'+darkColor+';font-size:clamp(16px,4vw,20px);font-weight:900';styles.appendChild(stylesTitle);
       const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px';
       photos.forEach(photo=>{
         const item=document.createElement('article');item.style.cssText='min-width:0;padding:7px;border-radius:18px;background:#fff;border:1px solid '+color+'66;text-align:center';
         const frame=document.createElement('div');frame.style.cssText='width:100%;aspect-ratio:1/1;display:grid;place-items:center;overflow:hidden;border-radius:13px;background:'+color+'18';
-        const label=document.createElement('div');label.textContent=photo.name||'スタイル';label.style.cssText='margin:7px 0 1px;color:#40596b;font-size:clamp(11px,3vw,14px);font-weight:900;overflow-wrap:anywhere';
+        const label=document.createElement('div');label.textContent=photo.name||'スタイル';label.style.cssText='margin:7px 0 1px;color:'+darkColor+';font-size:clamp(11px,3vw,14px);font-weight:900;overflow-wrap:anywhere';
         item.append(frame,label);grid.appendChild(item);
         if(photo.path)runSafely(async()=>{const url=String(photo.path).startsWith('http')?photo.path:await signedImageUrl(photo.path);if(url){const img=document.createElement('img');img.src=url;img.alt=(photo.name||'スタイル')+'の写真';img.loading='lazy';img.style.cssText='width:100%;height:100%;object-fit:cover';frame.replaceChildren(img);}else frame.textContent='写真を読み込めません';});else frame.textContent='登録画像';
       });
       styles.appendChild(grid);content.appendChild(styles);
     }
-    if(d.memo){const memo=document.createElement('section');memo.style.cssText='padding:12px 14px;border:1px dashed '+color+';border-radius:17px;background:#fff';const title=document.createElement('h3');title.textContent='♡ メモ';title.style.cssText='margin:0 0 6px;color:#40596b;font-size:14px';const body=document.createElement('p');body.textContent=d.memo;body.style.cssText='margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#394c5b;line-height:1.7';memo.append(title,body);content.appendChild(memo);}
+    if(d.memo){const memo=document.createElement('section');memo.style.cssText='padding:12px 14px;border:1px dashed '+color+';border-radius:17px;background:#fff';const title=document.createElement('h3');title.textContent='♡ メモ';title.style.cssText='margin:0 0 6px;color:'+darkColor+';font-size:14px';const body=document.createElement('p');body.textContent=d.memo;body.style.cssText='margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:'+darkColor+';line-height:1.7';memo.append(title,body);content.appendChild(memo);}
     const back=document.createElement('button');back.type='button';back.className='secondary';back.textContent='♡ 一覧にもどる';back.style.cssText='width:100%;border-radius:18px;padding:14px;margin-top:2px;background:'+color+'30;color:#34495a;border:1px solid '+color+'88;font-weight:900';back.addEventListener('click',renderCharacters);content.appendChild(back);
     list.appendChild(panel);
   }
