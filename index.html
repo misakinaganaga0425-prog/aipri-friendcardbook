@@ -861,31 +861,58 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   }
   function renderCharacterDetail(character){
     const list=$('charsList');if(!list)return;list.replaceChildren();const d=character.character_data||{};activeCharacter=character.id;applyCharacterTheme(character.id);
-    const panel=document.createElement('article');panel.className='panel characterDetail';panel.style.cssText='margin-top:12px;padding:0;overflow:hidden;border:1px solid var(--line);border-radius:26px;background:var(--theme-panel,var(--white));box-shadow:0 10px 30px color-mix(in srgb,var(--theme-accent) 12%,transparent)';
-    const sheetColor=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';
+    const color=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';
     const motifs={cute:'♡ ୨୧ ♡',cool:'◇ ✦ ◇',pop:'★ ✧ ★',sexy:'♤ ♡ ♤',elegant:'❀ ･ ❀',gothic:'☾ ✧ ☽',natural:'❋ ❀ ❋',fantasy:'✧･ﾟ ✦ ﾟ･✧'};
     const motif=motifs[d.sheet_style||'cute']||motifs.cute;
-    panel.style.setProperty('--sheet-color',sheetColor);panel.style.setProperty('--theme-ink','#24566a');panel.style.setProperty('--theme-line',sheetColor+'66');
-    const banner=document.createElement('div');banner.style.cssText='position:relative;padding:24px 18px 18px;text-align:center;background:linear-gradient(145deg,'+sheetColor+'44,'+sheetColor+'22,#fff);border-bottom:1px solid '+sheetColor+'';
-    const sparkle=document.createElement('div');sparkle.textContent=motif;sparkle.style.cssText='color:#24566a;font-size:18px;letter-spacing:4px;margin-bottom:4px';banner.appendChild(sparkle);
-    const h=document.createElement('h3');h.textContent=character.character_name+'の図鑑';h.style.cssText='font-size:clamp(22px,5vw,28px);color:#24566a;margin:0;line-height:1.35';banner.appendChild(h);
-    const sub=document.createElement('p');sub.textContent='MY CHARACTER PROFILE';sub.style.cssText='font-size:10px;letter-spacing:.16em;font-weight:800;color:var(--deep);opacity:.72;margin:7px 0 0';banner.appendChild(sub);panel.appendChild(banner);
-    const content=document.createElement('div');content.style.cssText='padding:16px;display:grid;gap:14px';panel.appendChild(content);
-    const addText=(label,value,icon)=>{if(!value)return;const box=document.createElement('section');box.style.cssText='padding:13px 15px;border:1px solid var(--line);border-radius:17px;background:var(--soft)';const title=document.createElement('h4');title.textContent=(icon||'♡')+' '+label;title.style.cssText='margin:0 0 7px;font-size:14px;color:var(--theme-ink);';const text=document.createElement('p');text.textContent=value;text.style.cssText='margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);line-height:1.7';box.append(title,text);content.appendChild(box);};
-    const photoSection=document.createElement('section');photoSection.style.cssText='display:grid;gap:14px';content.appendChild(photoSection);
-    const addPhoto=async(label,path,cover=false)=>{if(!path)return;const url=String(path).startsWith('http')?path:await signedImageUrl(path);if(!url)return;const box=document.createElement('div');box.style.cssText='min-width:0;padding:8px;border:1px solid var(--theme-line);border-radius:16px;background:var(--theme-panel);text-align:center';if(!cover){const cap=document.createElement('div');cap.textContent=label;cap.style.cssText='font-weight:800;color:var(--theme-ink);font-size:12px;margin:2px 0 7px';box.appendChild(cap);}const frame=document.createElement('div');frame.style.cssText='display:grid;place-items:center;max-width:100%;margin:auto;overflow:hidden;border-radius:12px;background:var(--theme-active);'+(cover?'max-height:440px;':'aspect-ratio:3/4;');const img=document.createElement('img');img.src=url;img.alt=cover?'':label;img.style.cssText='display:block;width:100%;'+(cover?'max-height:440px;':'height:100%;')+'object-fit:contain';frame.appendChild(img);box.appendChild(frame);photoSection.appendChild(box);};
-    const back=document.createElement('button');back.type='button';back.className='secondary';back.textContent='♡ 一覧に戻る';back.style.cssText='width:100%;border-radius:16px;padding:13px;margin-top:2px;background:var(--theme-active);color:var(--theme-accent);border-color:var(--line)';back.addEventListener('click',renderCharacters);content.appendChild(back);
+    const panel=document.createElement('article');panel.className='panel characterDetail';panel.style.cssText='margin-top:12px;padding:0;overflow:hidden;border:1px solid '+color+'88;border-radius:26px;background:linear-gradient(160deg,'+color+'18,#fff 42%,'+color+'12);box-shadow:0 10px 30px '+color+'22;color:#394c5b';
+    const heading=document.createElement('header');heading.style.cssText='position:relative;padding:22px 16px 18px;text-align:center;background:linear-gradient(145deg,'+color+'44,'+color+'20,#fff);border-bottom:2px solid '+color+';'
+    const motifEl=document.createElement('div');motifEl.textContent=motif;motifEl.style.cssText='color:'+color+';font-size:20px;letter-spacing:4px;font-weight:900;margin-bottom:5px';
+    const name=document.createElement('h2');name.textContent=character.character_name;name.style.cssText='margin:0;color:#34495a;font-size:clamp(24px,6vw,32px);font-weight:900;overflow-wrap:anywhere;text-shadow:0 1px #fff';
+    const subtitle=document.createElement('div');subtitle.textContent='MY CHARACTER PROFILE';subtitle.style.cssText='margin-top:7px;color:#526b7c;font-size:10px;letter-spacing:.18em;font-weight:900';
+    heading.append(motifEl,name,subtitle);panel.appendChild(heading);
+    const content=document.createElement('div');content.style.cssText='padding:14px;display:grid;gap:14px';panel.appendChild(content);
+    const top=document.createElement('div');top.style.cssText='display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch';
+    const coverBox=document.createElement('section');coverBox.style.cssText='min-width:0;padding:8px;border:2px solid '+color+'55;border-radius:22px;background:#fff;display:flex;flex-direction:column;justify-content:center;min-height:210px';
+    const coverPath=d.main_image_path||d.image_path||d.image_url||d.image||d.photo_url||d.illustration_url;
+    const introBox=document.createElement('section');introBox.style.cssText='min-width:0;padding:10px;border:2px solid '+color+'55;border-radius:22px;background:linear-gradient(145deg,#fff,'+color+'16);display:flex;flex-direction:column';
+    const introTitle=document.createElement('h3');introTitle.textContent='♡ マイキャラ紹介 ♡';introTitle.style.cssText='margin:2px 0 9px;text-align:center;color:#40596b;font-size:clamp(13px,3.5vw,17px);font-weight:900';
+    const introText=document.createElement('div');introText.textContent=d.intro||'紹介文はまだ登録されていません。';introText.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;flex:1;display:grid;place-items:center;text-align:center;padding:10px 6px;border-radius:16px;background:#fff;color:#394c5b;font-size:clamp(11px,3vw,14px);font-weight:700;line-height:1.8;min-height:160px';
+    introBox.append(introTitle,introText);top.append(coverBox,introBox);content.appendChild(top);
+    if(coverPath){
+      runSafely(async()=>{const url=String(coverPath).startsWith('http')?coverPath:await signedImageUrl(coverPath);if(url){const img=document.createElement('img');img.src=url;img.alt=character.character_name+'のメイン画像';img.loading='lazy';img.style.cssText='display:block;width:100%;height:100%;max-height:390px;object-fit:contain;border-radius:14px';coverBox.replaceChildren(img);}else coverBox.textContent='メイン画像を読み込めません';});
+    }else{const ph=document.createElement('div');ph.textContent='メイン画像';ph.style.cssText='display:grid;place-items:center;min-height:190px;color:#64798a;font-weight:800;text-align:center';coverBox.appendChild(ph);}
+    const meta=document.createElement('section');meta.style.cssText='display:grid;grid-template-columns:1fr;gap:8px;padding:10px;border:2px solid '+color+'55;border-radius:20px;background:linear-gradient(90deg,'+color+'18,#fff)';
+    const metaRow=(label,value,icon)=>{if(!value)return;const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:minmax(100px,.85fr) minmax(0,1.4fr);gap:8px;align-items:center;padding:8px 10px;border-radius:14px;background:#fff;border:1px solid '+color+'44';const a=document.createElement('strong');a.textContent=(icon||'♡')+' '+label;a.style.cssText='color:#40596b;font-size:13px';const b=document.createElement('span');b.textContent=value;b.style.cssText='color:#394c5b;font-weight:800;font-size:13px;overflow-wrap:anywhere';row.append(a,b);meta.appendChild(row);};
+    metaRow('誕生日',d.birthday,'▦');metaRow('イメージカラー',color,'♡');metaRow('モチーフ',d.motif,'୨୧');
+    if(meta.childElementCount)content.appendChild(meta);
+    const photos=Array.isArray(d.appearance_photos)?d.appearance_photos:[];
+    if(photos.length){
+      const styles=document.createElement('section');styles.style.cssText='padding:13px 10px 15px;border-radius:24px;background:linear-gradient(145deg,'+color+'30,#fff,'+color+'18);border:1px solid '+color+'55';
+      const stylesTitle=document.createElement('h3');stylesTitle.textContent=motif+' スタイル紹介 '+motif;stylesTitle.style.cssText='margin:0 0 12px;text-align:center;color:#40596b;font-size:clamp(16px,4vw,20px);font-weight:900';styles.appendChild(stylesTitle);
+      const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px';
+      photos.forEach(photo=>{
+        const item=document.createElement('article');item.style.cssText='min-width:0;padding:7px;border-radius:18px;background:#fff;border:1px solid '+color+'66;text-align:center';
+        const frame=document.createElement('div');frame.style.cssText='width:100%;aspect-ratio:1/1;display:grid;place-items:center;overflow:hidden;border-radius:13px;background:'+color+'18';
+        const label=document.createElement('div');label.textContent=photo.name||'スタイル';label.style.cssText='margin:7px 0 1px;color:#40596b;font-size:clamp(11px,3vw,14px);font-weight:900;overflow-wrap:anywhere';
+        item.append(frame,label);grid.appendChild(item);
+        if(photo.path)runSafely(async()=>{const url=String(photo.path).startsWith('http')?photo.path:await signedImageUrl(photo.path);if(url){const img=document.createElement('img');img.src=url;img.alt=(photo.name||'スタイル')+'の写真';img.loading='lazy';img.style.cssText='width:100%;height:100%;object-fit:cover';frame.replaceChildren(img);}else frame.textContent='写真を読み込めません';});else frame.textContent='登録画像';
+      });
+      styles.appendChild(grid);content.appendChild(styles);
+    }
+    if(d.memo){const memo=document.createElement('section');memo.style.cssText='padding:12px 14px;border:1px dashed '+color+';border-radius:17px;background:#fff';const title=document.createElement('h3');title.textContent='♡ メモ';title.style.cssText='margin:0 0 6px;color:#40596b;font-size:14px';const body=document.createElement('p');body.textContent=d.memo;body.style.cssText='margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#394c5b;line-height:1.7';memo.append(title,body);content.appendChild(memo);}
+    const back=document.createElement('button');back.type='button';back.className='secondary';back.textContent='♡ 一覧にもどる';back.style.cssText='width:100%;border-radius:18px;padding:14px;margin-top:2px;background:'+color+'30;color:#34495a;border:1px solid '+color+'88;font-weight:900';back.addEventListener('click',renderCharacters);content.appendChild(back);
     list.appendChild(panel);
-    runSafely(async()=>{await addPhoto('',d.main_image_path||d.image_path||d.image_url,true);addText('マイキャラ紹介',d.intro,'✧');addText('メモ',d.memo,'♡');const photos=Array.isArray(d.appearance_photos)?d.appearance_photos:[];if(photos.length){const heading=document.createElement('h4');heading.textContent='スタイル';heading.style.cssText='margin:4px 0 0;color:var(--theme-ink);font-size:18px';content.appendChild(heading);photoSection.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px';for(const photo of photos)await addPhoto(photo.name+'',photo.path,false);}});
   }
   function renderCharacterEditForm(character){
     const list=$('charsList');if(!list)return;list.replaceChildren();const data=character.character_data||{};
     const form=document.createElement('form');form.className='panel';form.style.marginTop='12px';
     const heading=document.createElement('h3');heading.textContent='マイキャラ編集';form.appendChild(heading);
-    const hint=document.createElement('p');hint.className='hint';hint.textContent='スタイルの種類を追加すると、フレカ登録のスタイルプルダウンにも反映されます。画像はJPEG・PNG・WebP、各10MBまで。';form.appendChild(hint);
+    const hint=document.createElement('p');hint.className='hint';hint.textContent='スタイルを追加すると、フレカ登録のスタイル選択にも反映されます。画像はJPEG・PNG・WebP、各10MBまで。';form.appendChild(hint);
     const field=(label,type='text',value='',placeholder='')=>{const l=document.createElement('label');l.textContent=label;const input=document.createElement(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.value=value||'';input.placeholder=placeholder;if(type==='textarea')input.rows=4;l.appendChild(input);form.appendChild(l);return input;};
     const name=field('マイキャラ名','text',character.character_name,'名前');
     const intro=field('マイキャラ紹介','textarea',data.intro||'','紹介文を入力');
+    const birthday=field('誕生日','text',data.birthday||'','例：4月20日');
+    const motif=field('モチーフ（任意）','text',data.motif||'','例：リボン・ハート');
     const memo=field('メモ（任意）','textarea',data.memo||'','自由にメモ');
     const themeLabel=document.createElement('label');themeLabel.textContent='設定シートのテーマカラー';
     const themeColor=document.createElement('input');themeColor.type='color';themeColor.value=/^#[0-9a-f]{6}$/i.test(data.sheet_color||'')?data.sheet_color:'#8bd7f3';themeLabel.appendChild(themeColor);form.appendChild(themeLabel);
@@ -898,8 +925,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     themeColor.addEventListener('input',updatePreview);styleSelect.addEventListener('change',updatePreview);name.addEventListener('input',updatePreview);updatePreview();form.appendChild(preview);
     const mainFile=field('マイキャラフォト（表紙）','file');mainFile.accept='image/jpeg,image/png,image/webp';
     const typesWrap=document.createElement('div');typesWrap.style.cssText='display:grid;gap:10px;margin:8px 0';
-    const typeLabel=document.createElement('label');typeLabel.textContent='スタイルの種類（追加・削除できます）';const typeInput=document.createElement('input');typeInput.placeholder='例：ツインテール';typeLabel.appendChild(typeInput);
-    const addType=document.createElement('button');addType.type='button';addType.className='secondary';addType.textContent='＋ スタイルの種類を追加';
+    const typeLabel=document.createElement('label');typeLabel.textContent='スタイル（追加・削除できます）';const typeInput=document.createElement('input');typeInput.placeholder='例：キューティツイン';typeLabel.appendChild(typeInput);
+    const addType=document.createElement('button');addType.type='button';addType.className='secondary';addType.textContent='＋ スタイルを追加';
     const typesList=document.createElement('div');typesList.style.cssText='display:grid;gap:10px';
     const types=Array.isArray(data.appearance_types)?[...data.appearance_types]:((data.appearance_type||data.appearance)?[data.appearance_type||data.appearance]:[]);
     const photos=Array.isArray(data.appearance_photos)?[...data.appearance_photos]:[];
@@ -927,7 +954,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       const mainPath=await upload(mainFile.files[0],'cover');
       const nextPhotos=[];
       for(const row of typesList.children){const type=row.dataset.appearance,old=photos.find(x=>x.name===type),newPath=await upload(row._file?.files?.[0],`appearance-${types.indexOf(type)}`);nextPhotos.push({name:type,path:newPath||old?.path||null});}
-      const next={...data,intro:intro.value.trim(),memo:memo.value.trim(),appearance_types:types,appearance_photos:nextPhotos,is_public:pub.checked,sheet_color:themeColor.value,sheet_style:styleSelect.value};
+      const next={...data,intro:intro.value.trim(),memo:memo.value.trim(),appearance_types:types,appearance_photos:nextPhotos,is_public:pub.checked,sheet_color:themeColor.value,sheet_style:styleSelect.value,birthday:birthday.value.trim(),motif:motif.value.trim()};
       if(mainPath)next.main_image_path=mainPath;
       const {error}=await client.from('my_characters').update({character_name:name.value.trim(),character_data:next}).eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;
       await loadCharacters();
