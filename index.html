@@ -824,7 +824,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     const selected=characters.find(c=>c.id===activeCharacter)||characters[0];
     activeCharacter=selected.id;
 
-    const selector=document.createElement('div');selector.className='characterChips';
+    const selector=document.createElement('div');selector.className='characterChips';selector.style.cssText=characters.length>1?'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px':'display:grid;grid-template-columns:1fr;gap:10px';
     characters.forEach(c=>{
       const b=document.createElement('button');b.type='button';b.textContent=c.character_name;
       b.classList.toggle('active',c.id===selected.id);
@@ -843,11 +843,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     const imageUrl=data.image_url||data.image||data.photo_url||data.illustration_url||'';
     if(imageUrl){
       const img=document.createElement('img');img.src=imageUrl;img.alt=selected.character_name;
-      img.style.cssText='display:block;width:min(100%,380px);max-height:560px;object-fit:contain;margin:0 auto 18px;border-radius:12px';
+      img.style.cssText='display:block;width:min(100%,300px);height:clamp(220px,42vh,360px);object-fit:contain;margin:0 auto 12px;border-radius:12px';
       page.appendChild(img);
     }else{
       const placeholder=document.createElement('div');placeholder.textContent='イメージ画像準備中';
-      placeholder.style.cssText='display:flex;align-items:center;justify-content:center;width:min(100%,380px);aspect-ratio:3/4;margin:0 auto 18px;border-radius:12px;background:linear-gradient(145deg,#edf8ff,#e6efff);color:#7b9ab0;font-weight:700;font-size:18px';
+      placeholder.style.cssText='display:flex;align-items:center;justify-content:center;width:min(100%,300px);height:clamp(220px,42vh,360px);margin:0 auto 12px;border-radius:12px;background:var(--soft,#edf8ff);color:var(--deep,#7b9ab0);font-weight:700;font-size:18px';
       page.appendChild(placeholder);
     }
     const buttons=document.createElement('div');buttons.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px';
@@ -855,7 +855,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     edit.addEventListener('click',()=>{
       const nameValue=prompt('マイキャラ名',selected.character_name);if(nameValue===null)return;if(!nameValue.trim())return alert('名前を入力してください。');
       const memo=prompt('メモ（任意）',data.memo||'');if(memo===null)return;
-      runSafely(async()=>{const {error}=await client.from('my_characters').update({character_name:nameValue.trim(),character_data:{...data,memo:memo.trim()}}).eq('id',selected.id).eq('user_id',currentUser.id);if(error)throw error;await loadCharacters();});
+      const intro=prompt('マイキャラ紹介',data.intro||'');if(intro===null)return;
+      const appearance=prompt('姿の種類（例：通常、別コーデなど）',data.appearance_type||'');if(appearance===null)return;
+      const mainImage=prompt('メイン画像URL（未登録なら空欄）',data.image_url||'');if(mainImage===null)return;
+      const appearanceImage=prompt('姿に合わせた画像URL（未登録なら空欄）',data.appearance_image_url||'');if(appearanceImage===null)return;
+      runSafely(async()=>{const {error}=await client.from('my_characters').update({character_name:nameValue.trim(),character_data:{...data,memo:memo.trim(),intro:intro.trim(),appearance_type:appearance.trim(),image_url:mainImage.trim(),appearance_image_url:appearanceImage.trim()}}).eq('id',selected.id).eq('user_id',currentUser.id);if(error)throw error;await loadCharacters();});
     });
     const cardsButton=document.createElement('button');cardsButton.type='button';cardsButton.className='secondary';cardsButton.textContent=selected.character_name+'のフレカ';
     cardsButton.addEventListener('click',()=>{activeCharacter=selected.id;showView('search');renderCards();});
