@@ -724,7 +724,16 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       selector.value=values.includes(old)?old:'';
     });
   }
+  function applyCharacterTheme(characterId=activeCharacter){
+    const c=characters.find(x=>x.id===characterId),d=c?.character_data||{};
+    const color=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';
+    document.documentElement.style.setProperty('--theme-accent',color);
+    document.documentElement.style.setProperty('--theme-active',color+'33');
+    document.documentElement.style.setProperty('--theme-panel',color+'12');
+    document.documentElement.dataset.characterStyle=d.sheet_style||'cute';
+  }
   function renderCharacterChips(){
+    applyCharacterTheme();
     const containers=[$('characterChips'),$('homeCharacterList')].filter(Boolean);
     containers.forEach((container,index)=>{
       container.replaceChildren();
@@ -834,7 +843,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     characters.forEach(c=>{
       const d=c.character_data||{};
       const card=document.createElement('article');
-      card.style.cssText='min-width:0;padding:12px;border:1px solid var(--line);border-radius:22px;background:var(--white);box-shadow:var(--shadow);text-align:center';
+      const theme=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';card.style.cssText='min-width:0;padding:12px;border:2px solid '+theme+'66;border-radius:22px;background:linear-gradient(145deg,#fff,'+theme+'18);box-shadow:var(--shadow);text-align:center';
       const title=document.createElement('h3');title.textContent=c.character_name;title.style.cssText='margin:4px 0 10px;color:var(--deep);overflow-wrap:anywhere';card.appendChild(title);
       const imgBox=document.createElement('div');imgBox.style.cssText='display:flex;align-items:center;justify-content:center;width:100%;height:clamp(120px,32vw,210px);margin:0 auto 12px;border-radius:14px;background:var(--soft);overflow:hidden';
       const img=document.createElement('img');img.alt=c.character_name;img.loading='lazy';img.style.cssText='width:100%;height:100%;object-fit:contain';
@@ -851,7 +860,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     list.appendChild(grid);
   }
   function renderCharacterDetail(character){
-    const list=$('charsList');if(!list)return;list.replaceChildren();const d=character.character_data||{};
+    const list=$('charsList');if(!list)return;list.replaceChildren();const d=character.character_data||{};activeCharacter=character.id;applyCharacterTheme(character.id);
     const panel=document.createElement('article');panel.className='panel characterDetail';panel.style.cssText='margin-top:12px;padding:0;overflow:hidden;border:1px solid var(--line);border-radius:26px;background:var(--theme-panel,var(--white));box-shadow:0 10px 30px color-mix(in srgb,var(--theme-accent) 12%,transparent)';
     const sheetColor=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';
     const motifs={cute:'♡ ୨୧ ♡',cool:'◇ ✦ ◇',pop:'★ ✧ ★',sexy:'♤ ♡ ♤',elegant:'❀ ･ ❀',gothic:'☾ ✧ ☽',natural:'❋ ❀ ❋',fantasy:'✧･ﾟ ✦ ﾟ･✧'};
@@ -863,12 +872,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     const sub=document.createElement('p');sub.textContent='MY CHARACTER PROFILE';sub.style.cssText='font-size:10px;letter-spacing:.16em;font-weight:800;color:var(--deep);opacity:.72;margin:7px 0 0';banner.appendChild(sub);panel.appendChild(banner);
     const content=document.createElement('div');content.style.cssText='padding:16px;display:grid;gap:14px';panel.appendChild(content);
     const addText=(label,value,icon)=>{if(!value)return;const box=document.createElement('section');box.style.cssText='padding:13px 15px;border:1px solid var(--line);border-radius:17px;background:var(--soft)';const title=document.createElement('h4');title.textContent=(icon||'♡')+' '+label;title.style.cssText='margin:0 0 7px;font-size:14px;color:var(--theme-accent);';const text=document.createElement('p');text.textContent=value;text.style.cssText='margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);line-height:1.7';box.append(title,text);content.appendChild(box);};
-    addText('マイキャラ紹介',d.intro,'✧');addText('メモ',d.memo,'♡');
     const photoSection=document.createElement('section');photoSection.style.cssText='display:grid;gap:14px';content.appendChild(photoSection);
     const addPhoto=async(label,path,cover=false)=>{if(!path)return;const url=String(path).startsWith('http')?path:await signedImageUrl(path);if(!url)return;const box=document.createElement('div');box.style.cssText='padding:12px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(145deg,var(--soft),var(--theme-panel));text-align:center';const cap=document.createElement('div');cap.textContent=(cover?'✦ ':'♡ ')+label;cap.style.cssText='font-weight:800;color:var(--theme-accent);margin:2px 0 10px';const frame=document.createElement('div');frame.style.cssText='display:grid;place-items:center;max-width:100%;margin:auto;overflow:hidden;border-radius:14px;background:var(--theme-active);'+(cover?'max-height:440px;':'max-height:340px;');const img=document.createElement('img');img.src=url;img.alt=label;img.style.cssText='display:block;width:100%;max-height:'+(cover?'440px':'340px')+';object-fit:contain';frame.appendChild(img);box.append(cap,frame);photoSection.appendChild(box);};
     const back=document.createElement('button');back.type='button';back.className='secondary';back.textContent='♡ 一覧に戻る';back.style.cssText='width:100%;border-radius:16px;padding:13px;margin-top:2px;background:var(--theme-active);color:var(--theme-accent);border-color:var(--line)';back.addEventListener('click',renderCharacters);content.appendChild(back);
     list.appendChild(panel);
-    runSafely(async()=>{await addPhoto('マイキャラフォト（表紙）',d.main_image_path||d.image_path||d.image_url,true);const photos=Array.isArray(d.appearance_photos)?d.appearance_photos:[];for(const photo of photos)await addPhoto(photo.name+'のマイキャラフォト',photo.path,false);});
+    runSafely(async()=>{await addPhoto('マイキャラフォト（表紙）',d.main_image_path||d.image_path||d.image_url,true);addText('マイキャラ紹介',d.intro,'✧');addText('メモ',d.memo,'♡');const photos=Array.isArray(d.appearance_photos)?d.appearance_photos:[];for(const photo of photos)await addPhoto(photo.name+'のマイキャラフォト',photo.path,false);});
   }
   function renderCharacterEditForm(character){
     const list=$('charsList');if(!list)return;list.replaceChildren();const data=character.character_data||{};
