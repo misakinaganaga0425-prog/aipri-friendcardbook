@@ -283,7 +283,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <label>色<input id="cardColor" maxlength="80" placeholder="例：水色、白"></label>
       <label>マイキャラ<select id="cardCharacter"><option value="">マイキャラを選択（任意）</option></select></label>
       <label>マイキャラをこの場で新規登録（任意）<input id="newCharacterInline" maxlength="100" placeholder="例：いのり"></label>
-      <label>マイキャラの姿<input id="cardAppearance" maxlength="100" placeholder="例：通常、ツインテール、ボブ"></label>
+      <label>マイキャラの姿<select id="cardAppearance"><option value="">姿を選択（任意）</option></select></label>
       <label>コーデの弾数・シリーズ<input id="cardSeries" maxlength="100" placeholder="例：1弾、プリマジ、アイカツ！ など"><span class="hint">自由に入力できます。シリーズ名や作品名も登録できます。</span></label>
       <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択後に切り取り位置や拡大率を調整できます。</span></label>
       <label>フレンドコード（QRコード）の画像<input id="cardQr" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・写真とは別に保存。QR全体が入るように切り取りできます。</span></label>
@@ -698,6 +698,14 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     characters.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.character_name;selector.appendChild(o);});
     selector.value=characters.some(c=>c.id===old)?old:'';
     updateManageFilterOptions();
+    updateCardAppearanceOptions();
+  }
+  function updateCardAppearanceOptions(){
+    const sel=$('cardAppearance');if(!sel)return;const prev=sel.value,character=characters.find(c=>c.id===$('cardCharacter')?.value);
+    sel.replaceChildren();const blank=document.createElement('option');blank.value='';blank.textContent='姿を選択（任意）';sel.appendChild(blank);
+    const d=character?.character_data||{},types=Array.isArray(d.appearance_types)?d.appearance_types:[];
+    types.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o);});
+    sel.value=types.includes(prev)?prev:'';
   }
   function updateManageFilterOptions(){
     const selector=$('manageCardCharacterFilter');if(!selector)return;const old=selector.value;selector.replaceChildren();
@@ -833,6 +841,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       const mainPath=d.main_image_path||d.image_path||d.image_url||d.image||d.photo_url||d.illustration_url;
       if(mainPath){(async()=>{const url=String(mainPath).startsWith('http')?mainPath:await signedImageUrl(mainPath);if(url){img.src=url;imgBox.replaceChildren(img);}else imgBox.textContent='イメージ画像準備中';})();}
       else imgBox.textContent='イメージ画像準備中';
+      imgBox.style.cursor='pointer';imgBox.setAttribute('role','button');imgBox.setAttribute('aria-label',c.character_name+'の図鑑詳細を表示');imgBox.addEventListener('click',()=>renderCharacterDetail(c));
       card.appendChild(imgBox);
       const actions=document.createElement('div');actions.style.cssText='display:grid;grid-template-columns:1fr;gap:8px';
       const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='✎ マイキャラ編集';edit.addEventListener('click',()=>renderCharacterEditForm(c));
@@ -841,28 +850,60 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     });
     list.appendChild(grid);
   }
+  function renderCharacterDetail(character){
+    const list=$('charsList');if(!list)return;list.replaceChildren();const d=character.character_data||{};
+    const panel=document.createElement('article');panel.className='panel';panel.style.marginTop='12px';
+    const h=document.createElement('h3');h.textContent=character.character_name+'の図鑑詳細';panel.appendChild(h);
+    const add=(label,value)=>{if(!value)return;const l=document.createElement('p');l.style.whiteSpace='pre-wrap';const b=document.createElement('strong');b.textContent=label+'：';l.append(b,document.createTextNode(value));panel.appendChild(l);};
+    add('紹介',d.intro);add('メモ',d.memo);
+    const photos=Array.isArray(d.appearance_photos)?d.appearance_photos:[];
+    const showPhoto=async(label,path)=>{if(!path)return;const url=String(path).startsWith('http')?path:await signedImageUrl(path);if(!url)return;const box=document.createElement('div');box.style.cssText='margin:12px 0;text-align:center';const cap=document.createElement('p');cap.textContent=label;const img=document.createElement('img');img.src=url;img.alt=label;img.style.cssText='max-width:100%;max-height:360px;object-fit:contain;border-radius:14px';box.append(cap,img);panel.appendChild(box);};
+    list.appendChild(panel);
+    runSafely(async()=>{const showPhoto=async(label,path)=>{if(!path)return;const url=String(path).startsWith('http')?path:await signedImageUrl(path);if(!url)return;const box=document.createElement('div');box.style.cssText='margin:12px 0;text-align:center';const cap=document.createElement('p');cap.textContent=label;const img=document.createElement('img');img.src=url;img.alt=label;img.style.cssText='max-width:100%;max-height:360px;object-fit:contain;border-radius:14px';box.append(cap,img);panel.insertBefore(box,back);};await showPhoto('マイキャラフォト（表紙）',d.main_image_path||d.image_path||d.image_url);for(const photo of photos)await showPhoto(photo.name,photo.path);});
+    const back=document.createElement('button');back.type='button';back.className='secondary';back.textContent='一覧に戻る';back.addEventListener('click',renderCharacters);panel.appendChild(back);
+  }
   function renderCharacterEditForm(character){
     const list=$('charsList');if(!list)return;list.replaceChildren();const data=character.character_data||{};
     const form=document.createElement('form');form.className='panel';form.style.marginTop='12px';
     const heading=document.createElement('h3');heading.textContent='マイキャラ編集';form.appendChild(heading);
-    const hint=document.createElement('p');hint.className='hint';hint.textContent='フレカ登録と同じように、項目をまとめて編集できます。画像はJPEG・PNG・WebP、各10MBまで。';form.appendChild(hint);
-    const field=(label,id,type='text',value='',placeholder='')=>{const l=document.createElement('label');l.textContent=label;const input=document.createElement(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.id=id;input.value=value||'';input.placeholder=placeholder;if(type==='textarea')input.rows=4;l.appendChild(input);form.appendChild(l);return input;};
-    const name=field('マイキャラ名','characterEditName','text',character.character_name,'名前');
-    const intro=field('マイキャラ紹介','characterEditIntro','textarea',data.intro||'','紹介文を入力');
-    const memo=field('メモ（任意）','characterEditMemo','textarea',data.memo||'','自由にメモ');
-    const mainFile=field('メイン画像','characterMainImage','file','','');mainFile.accept='image/jpeg,image/png,image/webp';
-    const appearance=field('姿の種類','characterAppearance','text',data.appearance_type||data.appearance||'','例：通常、ツインテール、ボブ');
-    const appearanceFile=field('姿に合わせた画像','characterAppearanceImage','file','','');appearanceFile.accept='image/jpeg,image/png,image/webp';
-    const publicLabel=document.createElement('label');publicLabel.className='switchrow';const pub=document.createElement('input');pub.type='checkbox';pub.checked=!!data.is_public;publicLabel.append(pub,document.createTextNode('このマイキャラ図鑑を共有ページに公開する'));form.appendChild(publicLabel);
+    const hint=document.createElement('p');hint.className='hint';hint.textContent='姿の種類を追加すると、フレカ登録の姿プルダウンにも反映されます。画像はJPEG・PNG・WebP、各10MBまで。';form.appendChild(hint);
+    const field=(label,type='text',value='',placeholder='')=>{const l=document.createElement('label');l.textContent=label;const input=document.createElement(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.value=value||'';input.placeholder=placeholder;if(type==='textarea')input.rows=4;l.appendChild(input);form.appendChild(l);return input;};
+    const name=field('マイキャラ名','text',character.character_name,'名前');
+    const intro=field('マイキャラ紹介','textarea',data.intro||'','紹介文を入力');
+    const memo=field('メモ（任意）','textarea',data.memo||'','自由にメモ');
+    const mainFile=field('マイキャラフォト（表紙）','file');mainFile.accept='image/jpeg,image/png,image/webp';
+    const typesWrap=document.createElement('div');typesWrap.style.cssText='display:grid;gap:10px;margin:8px 0';
+    const typeLabel=document.createElement('label');typeLabel.textContent='姿の種類（追加・削除できます）';const typeInput=document.createElement('input');typeInput.placeholder='例：ツインテール';typeLabel.appendChild(typeInput);
+    const addType=document.createElement('button');addType.type='button';addType.className='secondary';addType.textContent='＋ 姿の種類を追加';
+    const typesList=document.createElement('div');typesList.style.cssText='display:grid;gap:10px';
+    const types=Array.isArray(data.appearance_types)?[...data.appearance_types]:((data.appearance_type||data.appearance)?[data.appearance_type||data.appearance]:[]);
+    const photos=Array.isArray(data.appearance_photos)?[...data.appearance_photos]:[];
+    const drawTypes=()=>{
+      typesList.replaceChildren();
+      types.forEach((type,index)=>{
+        const row=document.createElement('div');row.className='panel';row.style.cssText='padding:12px;display:grid;gap:8px';
+        const title=document.createElement('strong');title.textContent=type;row.appendChild(title);
+        const file=document.createElement('input');file.type='file';file.accept='image/jpeg,image/png,image/webp';file.setAttribute('aria-label',type+'のマイキャラフォト');row.appendChild(file);
+        const old=photos.find(x=>x.name===type);
+        if(old?.path){const note=document.createElement('small');note.textContent='登録済みの写真あり（新しい写真を選ぶと差し替え）';note.className='hint';row.appendChild(note);}
+        const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='この姿を削除';remove.addEventListener('click',()=>{types.splice(index,1);drawTypes();});row.appendChild(remove);
+        row.dataset.appearance=type;row.dataset.fileInput='true';row._file=file;typesList.appendChild(row);
+      });
+    };
+    addType.addEventListener('click',()=>{const value=typeInput.value.trim();if(!value)return;if(types.includes(value)){typeInput.value='';return;}types.push(value);typeInput.value='';drawTypes();});
+    typesWrap.append(typeLabel,addType,typesList);form.appendChild(typesWrap);drawTypes();
+    const pubLabel=document.createElement('label');pubLabel.className='switchrow';const pub=document.createElement('input');pub.type='checkbox';pub.checked=!!data.is_public;pubLabel.append(pub,document.createTextNode('このマイキャラ図鑑を共有ページに公開する'));form.appendChild(pubLabel);
     const status=document.createElement('p');status.className='hint';status.setAttribute('role','status');form.appendChild(status);
     const buttons=document.createElement('div');buttons.className='buttonRow';const save=document.createElement('button');save.type='submit';save.textContent='変更を保存';const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='キャンセル';cancel.addEventListener('click',renderCharacters);buttons.append(save,cancel);form.appendChild(buttons);
     form.addEventListener('submit',e=>{e.preventDefault();runSafely(async()=>{
       if(!name.value.trim()){status.textContent='マイキャラ名を入力してください。';return;}
-      const upload=async(file,type)=>{if(!file)return null;if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024)throw new Error('画像はJPEG・PNG・WebP、10MB以下にしてください。');const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[file.type];const path=`${currentUser.id}/${character.id}/character-${type}.${ext}`;const {error}=await client.storage.from(BUCKET).upload(path,file,{upsert:true,contentType:file.type});if(error)throw new Error('画像アップロード失敗：'+error.message);return path;};
+      const upload=async(file,type)=>{if(!file)return null;if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024)throw new Error('画像はJPEG・PNG・WebP、10MB以下にしてください。');const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[file.type];const path=`${currentUser.id}/${character.id}/character-${type}-${Date.now()}.${ext}`;const {error}=await client.storage.from(BUCKET).upload(path,file,{upsert:true,contentType:file.type});if(error)throw new Error('画像アップロード失敗：'+error.message);return path;};
       save.disabled=true;status.textContent='保存しています…';
-      const mainPath=await upload(mainFile.files[0],'main');const appearancePath=await upload(appearanceFile.files[0],'appearance');
-      const next={...data,intro:intro.value.trim(),memo:memo.value.trim(),appearance_type:appearance.value.trim(),is_public:pub.checked};
-      if(mainPath)next.main_image_path=mainPath;if(appearancePath)next.appearance_image_path=appearancePath;
+      const mainPath=await upload(mainFile.files[0],'cover');
+      const nextPhotos=[];
+      for(const row of typesList.children){const type=row.dataset.appearance,old=photos.find(x=>x.name===type),newPath=await upload(row._file?.files?.[0],`appearance-${types.indexOf(type)}`);nextPhotos.push({name:type,path:newPath||old?.path||null});}
+      const next={...data,intro:intro.value.trim(),memo:memo.value.trim(),appearance_types:types,appearance_photos:nextPhotos,is_public:pub.checked};
+      if(mainPath)next.main_image_path=mainPath;
       const {error}=await client.from('my_characters').update({character_name:name.value.trim(),character_data:next}).eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;
       await loadCharacters();
     }).catch(err=>{status.textContent=err.message||String(err);save.disabled=false;});});
@@ -1099,6 +1140,7 @@ $('characterCatalogPublic')?.addEventListener('change',()=>runSafely(async()=>{
   $('registerModeManage')?.addEventListener('click',()=>setRegisterMode('manage'));
   $('cardSearch')?.addEventListener('input',renderCards);
   $('appearanceFilter')?.addEventListener('input',renderCards);
+  $('cardCharacter')?.addEventListener('change',updateCardAppearanceOptions);
   $('seriesFilter')?.addEventListener('change',renderCards);
   ['sharedCardSearch','sharedAppearanceFilter'].forEach(id=>$(id)?.addEventListener('input',renderSharedCards));
   $('sharedSeriesFilter')?.addEventListener('change',renderSharedCards);
