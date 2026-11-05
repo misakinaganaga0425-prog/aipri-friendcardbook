@@ -257,9 +257,9 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <div id="characterChips" class="characterChips" aria-label="マイキャラで絞り込み"></div>
     <details id="cardSearchPanel" class="panel searchControls">
       <summary class="searchSummary"><span>図鑑を検索・絞り込み</span><span class="summaryHint">タップして開閉</span></summary>
-      <label>キーワード検索<input id="cardSearch" type="search" placeholder="コーデ名・色・マイキャラ・姿・弾数・メモ" autocomplete="off"></label>
+      <label>キーワード検索<input id="cardSearch" type="search" placeholder="コーデ名・色・マイキャラ・スタイル・弾数・メモ" autocomplete="off"></label>
       <div class="filterGrid">
-        <label>マイキャラの姿<input id="appearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
+        <label>マイキャラのスタイル<input id="appearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
         <label>コーデの弾数・シリーズ<select id="seriesFilter"><option value="">すべて</option></select></label>
       </div>
       <p class="hint">検索条件を空欄にすると、登録済みのフレカをすべて表示します。色・弾数・メモなどは表示しなくても検索対象になります。</p>
@@ -283,7 +283,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <label>色<input id="cardColor" maxlength="80" placeholder="例：水色、白"></label>
       <label>マイキャラ<select id="cardCharacter"><option value="">マイキャラを選択（任意）</option></select></label>
       <label>マイキャラをこの場で新規登録（任意）<input id="newCharacterInline" maxlength="100" placeholder="例：いのり"></label>
-      <label>マイキャラの姿<select id="cardAppearance"><option value="">姿を選択（任意）</option></select></label>
+      <label>マイキャラのスタイル<select id="cardAppearance"><option value="">スタイルを選択（任意）</option></select></label>
       <label>コーデの弾数・シリーズ<input id="cardSeries" maxlength="100" placeholder="例：1弾、プリマジ、アイカツ！ など"><span class="hint">自由に入力できます。シリーズ名や作品名も登録できます。</span></label>
       <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択後に切り取り位置や拡大率を調整できます。</span></label>
       <label>フレンドコード（QRコード）の画像<input id="cardQr" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・写真とは別に保存。QR全体が入るように切り取りできます。</span></label>
@@ -296,12 +296,12 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <p class="hint">編集したいフレカの「編集」を押してね。削除もここからできます。</p>
       <details id="manageCardSearchPanel" class="panel manageSearchPanel">
         <summary class="searchSummary"><span>フレカを検索・絞り込み</span><span class="summaryHint">タップして開閉</span></summary>
-        <label>キーワード検索<input id="manageCardSearch" type="search" placeholder="コーデ名・色・マイキャラ・姿・弾数・メモ" autocomplete="off"></label>
+        <label>キーワード検索<input id="manageCardSearch" type="search" placeholder="コーデ名・色・マイキャラ・スタイル・弾数・メモ" autocomplete="off"></label>
         <div class="filterGrid">
           <label>マイキャラ<select id="manageCardCharacterFilter"><option value="">すべてのマイキャラ</option></select></label>
           <label>コーデの弾数・シリーズ<select id="manageCardSeriesFilter"><option value="">すべて</option></select></label>
         </div>
-        <label>マイキャラの姿<input id="manageCardAppearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
+        <label>マイキャラのスタイル<input id="manageCardAppearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
       </details>
       <div id="registeredCardsList" class="itemList"><p class="muted">ログインすると登録済みフレカが表示されます。</p></div>
     </section>
@@ -322,9 +322,9 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       <div id="sharedCharacterChips" class="characterChips"></div>
       <details id="sharedCardSearchPanel" class="panel searchControls">
         <summary class="searchSummary"><span>図鑑を検索・絞り込み</span><span class="summaryHint">タップして開閉</span></summary>
-        <label>キーワード検索<input id="sharedCardSearch" type="search" placeholder="コーデ名・色・マイキャラ・姿・弾数・メモ" autocomplete="off"></label>
+        <label>キーワード検索<input id="sharedCardSearch" type="search" placeholder="コーデ名・色・マイキャラ・スタイル・弾数・メモ" autocomplete="off"></label>
         <div class="filterGrid">
-          <label>マイキャラの姿<input id="sharedAppearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
+          <label>マイキャラのスタイル<input id="sharedAppearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
           <label>コーデの弾数・シリーズ<select id="sharedSeriesFilter"><option value="">すべて</option></select></label>
         </div>
       </details>
@@ -702,7 +702,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   }
   function updateCardAppearanceOptions(){
     const sel=$('cardAppearance');if(!sel)return;const prev=sel.value,character=characters.find(c=>c.id===$('cardCharacter')?.value);
-    sel.replaceChildren();const blank=document.createElement('option');blank.value='';blank.textContent='姿を選択（任意）';sel.appendChild(blank);
+    sel.replaceChildren();const blank=document.createElement('option');blank.value='';blank.textContent='スタイルを選択（任意）';sel.appendChild(blank);
     const d=character?.character_data||{},types=Array.isArray(d.appearance_types)?d.appearance_types:[];
     types.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o);});
     sel.value=types.includes(prev)?prev:'';
@@ -778,7 +778,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       const photoStage=document.createElement('div');photoStage.className='photoStage';const photoPlaceholder=document.createElement('div');photoPlaceholder.className='photoPlaceholder';photoPlaceholder.textContent='コーデ写真';photoStage.appendChild(photoPlaceholder);item.appendChild(photoStage);
       const bottom=document.createElement('div');bottom.className='cardBottom';const qrStage=document.createElement('div');qrStage.className='qrStage';
       const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qrStage.appendChild(qrPlaceholder);bottom.appendChild(qrStage);
-      const details=document.createElement('div');details.className='cardDetails';appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');appendText(details,'div',(d.appearance||'姿未設定')+' ver.','appearanceName');bottom.appendChild(details);item.appendChild(bottom);
+      const details=document.createElement('div');details.className='cardDetails';appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');appendText(details,'div',(d.appearance||'スタイル未設定')+' ver.','appearanceName');bottom.appendChild(details);item.appendChild(bottom);
       const visibility=document.createElement('label');visibility.className='switchrow cardVisibilityToggle';const check=document.createElement('input');check.type='checkbox';check.checked=card.is_public!==false;check.addEventListener('change',()=>setCardVisibility(card,check.checked,check));visibility.append(check,document.createTextNode('共有ページに公開'));item.appendChild(visibility);list.appendChild(item);
       renderCardMedia(photoStage,qrStage,d).catch(console.error);
     });
@@ -809,13 +809,13 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(!filtered.length){appendText(list,'p','条件に合うフレカがありません。','muted');return;}
     filtered.forEach(card=>{
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),item=document.createElement('article');item.className='item';
-      const info=document.createElement('div');info.className='itemInfo';appendText(info,'strong',card.card_name,'');appendText(info,'p',(character?.character_name||'マイキャラ未設定')+' ・ '+(d.appearance||'姿未設定')+' ・ '+(d.series||'弾数未設定'),'');
+      const info=document.createElement('div');info.className='itemInfo';appendText(info,'strong',card.card_name,'');appendText(info,'p',(character?.character_name||'マイキャラ未設定')+' ・ '+(d.appearance||'スタイル未設定')+' ・ '+(d.series||'弾数未設定'),'');
       const visibility=document.createElement('label');visibility.className='switchrow cardVisibilityToggle';const check=document.createElement('input');check.type='checkbox';check.checked=card.is_public!==false;check.addEventListener('change',()=>setCardVisibility(card,check.checked,check));visibility.append(check,document.createTextNode('共有ページに公開'));info.appendChild(visibility);
       const actions=document.createElement('div');actions.className='manageActions';
       const edit=document.createElement('button');edit.className='secondary';edit.textContent='編集';edit.addEventListener('click',()=>beginEditCard(card));
       const profileEdit=document.createElement('button');profileEdit.className='secondary';profileEdit.textContent='図鑑情報を編集';profileEdit.addEventListener('click',()=>{
         const intro=prompt('キャラ紹介',character.character_data?.intro||'');if(intro===null)return;
-        const appearance=prompt('姿・見た目のメモ',character.character_data?.appearance_note||'');if(appearance===null)return;
+        const appearance=prompt('スタイル・見た目のメモ',character.character_data?.appearance_note||'');if(appearance===null)return;
         const publicValue=confirm('このキャラを共有ページに公開しますか？\nOK：公開 / キャンセル：非公開');
         runSafely(async()=>{const {error}=await client.from('my_characters').update({character_data:{...(character.character_data||{}),intro:intro.trim(),appearance_note:appearance.trim(),is_public:publicValue}}).eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;scheduleCloudBackup();await loadCharacters();});
       });
@@ -865,24 +865,24 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     const sheetColor=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';
     const motifs={cute:'♡ ୨୧ ♡',cool:'◇ ✦ ◇',pop:'★ ✧ ★',sexy:'♤ ♡ ♤',elegant:'❀ ･ ❀',gothic:'☾ ✧ ☽',natural:'❋ ❀ ❋',fantasy:'✧･ﾟ ✦ ﾟ･✧'};
     const motif=motifs[d.sheet_style||'cute']||motifs.cute;
-    panel.style.setProperty('--sheet-color',sheetColor);
+    panel.style.setProperty('--sheet-color',sheetColor);panel.style.setProperty('--theme-ink','#24566a');panel.style.setProperty('--theme-line',sheetColor+'66');
     const banner=document.createElement('div');banner.style.cssText='position:relative;padding:24px 18px 18px;text-align:center;background:linear-gradient(145deg,'+sheetColor+'44,'+sheetColor+'22,#fff);border-bottom:1px solid '+sheetColor+'';
-    const sparkle=document.createElement('div');sparkle.textContent=motif;sparkle.style.cssText='color:'+sheetColor+';font-size:18px;letter-spacing:4px;margin-bottom:4px';banner.appendChild(sparkle);
-    const h=document.createElement('h3');h.textContent=character.character_name+'の図鑑';h.style.cssText='font-size:clamp(22px,5vw,28px);color:'+sheetColor+';margin:0;line-height:1.35';banner.appendChild(h);
+    const sparkle=document.createElement('div');sparkle.textContent=motif;sparkle.style.cssText='color:#24566a;font-size:18px;letter-spacing:4px;margin-bottom:4px';banner.appendChild(sparkle);
+    const h=document.createElement('h3');h.textContent=character.character_name+'の図鑑';h.style.cssText='font-size:clamp(22px,5vw,28px);color:#24566a;margin:0;line-height:1.35';banner.appendChild(h);
     const sub=document.createElement('p');sub.textContent='MY CHARACTER PROFILE';sub.style.cssText='font-size:10px;letter-spacing:.16em;font-weight:800;color:var(--deep);opacity:.72;margin:7px 0 0';banner.appendChild(sub);panel.appendChild(banner);
     const content=document.createElement('div');content.style.cssText='padding:16px;display:grid;gap:14px';panel.appendChild(content);
-    const addText=(label,value,icon)=>{if(!value)return;const box=document.createElement('section');box.style.cssText='padding:13px 15px;border:1px solid var(--line);border-radius:17px;background:var(--soft)';const title=document.createElement('h4');title.textContent=(icon||'♡')+' '+label;title.style.cssText='margin:0 0 7px;font-size:14px;color:var(--theme-accent);';const text=document.createElement('p');text.textContent=value;text.style.cssText='margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);line-height:1.7';box.append(title,text);content.appendChild(box);};
+    const addText=(label,value,icon)=>{if(!value)return;const box=document.createElement('section');box.style.cssText='padding:13px 15px;border:1px solid var(--line);border-radius:17px;background:var(--soft)';const title=document.createElement('h4');title.textContent=(icon||'♡')+' '+label;title.style.cssText='margin:0 0 7px;font-size:14px;color:var(--theme-ink);';const text=document.createElement('p');text.textContent=value;text.style.cssText='margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);line-height:1.7';box.append(title,text);content.appendChild(box);};
     const photoSection=document.createElement('section');photoSection.style.cssText='display:grid;gap:14px';content.appendChild(photoSection);
-    const addPhoto=async(label,path,cover=false)=>{if(!path)return;const url=String(path).startsWith('http')?path:await signedImageUrl(path);if(!url)return;const box=document.createElement('div');box.style.cssText='padding:12px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(145deg,var(--soft),var(--theme-panel));text-align:center';const cap=document.createElement('div');cap.textContent=(cover?'✦ ':'♡ ')+label;cap.style.cssText='font-weight:800;color:var(--theme-accent);margin:2px 0 10px';const frame=document.createElement('div');frame.style.cssText='display:grid;place-items:center;max-width:100%;margin:auto;overflow:hidden;border-radius:14px;background:var(--theme-active);'+(cover?'max-height:440px;':'max-height:340px;');const img=document.createElement('img');img.src=url;img.alt=label;img.style.cssText='display:block;width:100%;max-height:'+(cover?'440px':'340px')+';object-fit:contain';frame.appendChild(img);box.append(cap,frame);photoSection.appendChild(box);};
+    const addPhoto=async(label,path,cover=false)=>{if(!path)return;const url=String(path).startsWith('http')?path:await signedImageUrl(path);if(!url)return;const box=document.createElement('div');box.style.cssText='min-width:0;padding:8px;border:1px solid var(--theme-line);border-radius:16px;background:var(--theme-panel);text-align:center';if(!cover){const cap=document.createElement('div');cap.textContent=label;cap.style.cssText='font-weight:800;color:var(--theme-ink);font-size:12px;margin:2px 0 7px';box.appendChild(cap);}const frame=document.createElement('div');frame.style.cssText='display:grid;place-items:center;max-width:100%;margin:auto;overflow:hidden;border-radius:12px;background:var(--theme-active);'+(cover?'max-height:440px;':'aspect-ratio:3/4;');const img=document.createElement('img');img.src=url;img.alt=cover?'':label;img.style.cssText='display:block;width:100%;'+(cover?'max-height:440px;':'height:100%;')+'object-fit:contain';frame.appendChild(img);box.appendChild(frame);photoSection.appendChild(box);};
     const back=document.createElement('button');back.type='button';back.className='secondary';back.textContent='♡ 一覧に戻る';back.style.cssText='width:100%;border-radius:16px;padding:13px;margin-top:2px;background:var(--theme-active);color:var(--theme-accent);border-color:var(--line)';back.addEventListener('click',renderCharacters);content.appendChild(back);
     list.appendChild(panel);
-    runSafely(async()=>{await addPhoto('マイキャラフォト（表紙）',d.main_image_path||d.image_path||d.image_url,true);addText('マイキャラ紹介',d.intro,'✧');addText('メモ',d.memo,'♡');const photos=Array.isArray(d.appearance_photos)?d.appearance_photos:[];for(const photo of photos)await addPhoto(photo.name+'のマイキャラフォト',photo.path,false);});
+    runSafely(async()=>{await addPhoto('',d.main_image_path||d.image_path||d.image_url,true);addText('マイキャラ紹介',d.intro,'✧');addText('メモ',d.memo,'♡');const photos=Array.isArray(d.appearance_photos)?d.appearance_photos:[];if(photos.length){const heading=document.createElement('h4');heading.textContent='スタイル';heading.style.cssText='margin:4px 0 0;color:var(--theme-ink);font-size:18px';content.appendChild(heading);photoSection.style.cssText='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px';for(const photo of photos)await addPhoto(photo.name+'',photo.path,false);}});
   }
   function renderCharacterEditForm(character){
     const list=$('charsList');if(!list)return;list.replaceChildren();const data=character.character_data||{};
     const form=document.createElement('form');form.className='panel';form.style.marginTop='12px';
     const heading=document.createElement('h3');heading.textContent='マイキャラ編集';form.appendChild(heading);
-    const hint=document.createElement('p');hint.className='hint';hint.textContent='姿の種類を追加すると、フレカ登録の姿プルダウンにも反映されます。画像はJPEG・PNG・WebP、各10MBまで。';form.appendChild(hint);
+    const hint=document.createElement('p');hint.className='hint';hint.textContent='スタイルの種類を追加すると、フレカ登録のスタイルプルダウンにも反映されます。画像はJPEG・PNG・WebP、各10MBまで。';form.appendChild(hint);
     const field=(label,type='text',value='',placeholder='')=>{const l=document.createElement('label');l.textContent=label;const input=document.createElement(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.value=value||'';input.placeholder=placeholder;if(type==='textarea')input.rows=4;l.appendChild(input);form.appendChild(l);return input;};
     const name=field('マイキャラ名','text',character.character_name,'名前');
     const intro=field('マイキャラ紹介','textarea',data.intro||'','紹介文を入力');
@@ -898,8 +898,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     themeColor.addEventListener('input',updatePreview);styleSelect.addEventListener('change',updatePreview);name.addEventListener('input',updatePreview);updatePreview();form.appendChild(preview);
     const mainFile=field('マイキャラフォト（表紙）','file');mainFile.accept='image/jpeg,image/png,image/webp';
     const typesWrap=document.createElement('div');typesWrap.style.cssText='display:grid;gap:10px;margin:8px 0';
-    const typeLabel=document.createElement('label');typeLabel.textContent='姿の種類（追加・削除できます）';const typeInput=document.createElement('input');typeInput.placeholder='例：ツインテール';typeLabel.appendChild(typeInput);
-    const addType=document.createElement('button');addType.type='button';addType.className='secondary';addType.textContent='＋ 姿の種類を追加';
+    const typeLabel=document.createElement('label');typeLabel.textContent='スタイルの種類（追加・削除できます）';const typeInput=document.createElement('input');typeInput.placeholder='例：ツインテール';typeLabel.appendChild(typeInput);
+    const addType=document.createElement('button');addType.type='button';addType.className='secondary';addType.textContent='＋ スタイルの種類を追加';
     const typesList=document.createElement('div');typesList.style.cssText='display:grid;gap:10px';
     const types=Array.isArray(data.appearance_types)?[...data.appearance_types]:((data.appearance_type||data.appearance)?[data.appearance_type||data.appearance]:[]);
     const photos=Array.isArray(data.appearance_photos)?[...data.appearance_photos]:[];
@@ -911,7 +911,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
         const file=document.createElement('input');file.type='file';file.accept='image/jpeg,image/png,image/webp';file.setAttribute('aria-label',type+'のマイキャラフォト');row.appendChild(file);
         const old=photos.find(x=>x.name===type);
         if(old?.path){const note=document.createElement('small');note.textContent='登録済みの写真あり（新しい写真を選ぶと差し替え）';note.className='hint';row.appendChild(note);}
-        const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='この姿を削除';remove.addEventListener('click',()=>{types.splice(index,1);drawTypes();});row.appendChild(remove);
+        const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='このスタイルを削除';remove.addEventListener('click',()=>{types.splice(index,1);drawTypes();});row.appendChild(remove);
         row.dataset.appearance=type;row.dataset.fileInput='true';row._file=file;typesList.appendChild(row);
       });
     };
@@ -971,7 +971,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       const qr=document.createElement('div');qr.className='qrStage';const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qr.appendChild(qrPlaceholder);bottom.appendChild(qr);
       const details=document.createElement('div');details.className='cardDetails';
       appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');
-      appendText(details,'div',(d.appearance||'姿未設定')+' ver.','appearanceName');
+      appendText(details,'div',(d.appearance||'スタイル未設定')+' ver.','appearanceName');
       if(d.series)appendText(details,'div',d.series,'muted');
       bottom.appendChild(details);item.appendChild(bottom);list.appendChild(item);
       await renderCardMedia(photo,qr,d);
