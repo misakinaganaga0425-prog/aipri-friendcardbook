@@ -186,6 +186,14 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+.sharedBottomTabs{position:sticky;bottom:10px;z-index:20;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;margin:18px -4px 8px;border:1px solid var(--line);border-radius:22px;background:rgba(255,255,255,.94);box-shadow:0 8px 24px rgba(50,100,130,.18);backdrop-filter:blur(12px)}
+.sharedBottomTabs button{min-height:54px;border:1px solid var(--line);border-radius:16px;background:var(--soft);color:var(--deep);font-weight:900;font-size:14px}
+.sharedBottomTabs button.active{background:var(--blue);border-color:var(--blue);color:#173f56}
+.sharedTabPanel{min-width:0}
+#sharedCharacterSheets{display:grid;gap:18px}
+#sharedCharacterSheets>.panel{margin:0!important}
+</style>
 </head>
 <body>
 <header class="siteHeader">
@@ -319,10 +327,13 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <div class="sectionHeading"><div><span class="eyebrow" id="shareEyebrow">MY FRIEND CARDS</span><h2 id="shareHeading">フレカ図鑑</h2></div></div>
     <section id="shareViewerPanel" class="panel hidden">
       <p id="shareOwnerName" class="muted"></p>
-      <section id="sharedCharacterSheetsPanel" class="panel">
-        <div class="between"><h3>マイキャラ図鑑</h3><span class="pill">公開中のキャラ</span></div>
-        <div id="sharedCharacterSheets" class="itemList"></div>
+      <section id="sharedCharacterTabPanel" class="sharedTabPanel">
+        <section id="sharedCharacterSheetsPanel" class="panel">
+          <div class="between"><h3>マイキャラ図鑑</h3><span class="pill">公開中のキャラ</span></div>
+          <div id="sharedCharacterSheets" class="itemList"></div>
+        </section>
       </section>
+      <section id="sharedCardTabPanel" class="sharedTabPanel hidden">
       <div id="sharedCharacterChips" class="characterChips"></div>
       <details id="sharedCardSearchPanel" class="panel searchControls">
         <summary class="searchSummary"><span>図鑑を検索・絞り込み</span><span class="summaryHint">タップして開閉</span></summary>
@@ -334,6 +345,11 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       </details>
       <div class="between"><h3>フレカ図鑑</h3><span id="sharedSearchResultCount" class="pill">0 枚</span></div>
       <div id="sharedCardsList" class="cardsList"></div>
+      </section>
+      <nav class="sharedBottomTabs" aria-label="共有図鑑の切り替え">
+        <button type="button" id="sharedCharactersTab" class="active">♡ マイキャラ図鑑</button>
+        <button type="button" id="sharedCardsTab">♡ フレカ図鑑</button>
+      </nav>
       <p id="sharedStatus" role="status" class="muted"></p>
     </section>
     <section id="shareAdminPanel" class="panel">
@@ -883,7 +899,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     list.appendChild(grid);
   }
   function renderCharacterDetail(character,targetList=null,sharedMode=false){
-    const list=targetList||$('charsList');if(!list)return;list.replaceChildren();const d=character.character_data||{};activeCharacter=character.id;applyCharacterTheme(character.id);
+    const list=targetList||$('charsList');if(!list)return;if(!targetList)list.replaceChildren();const d=character.character_data||{};if(!sharedMode){activeCharacter=character.id;applyCharacterTheme(character.id);}
     const color=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';
     const rgb=color.match(/[0-9a-f]{2}/gi).map(v=>parseInt(v,16));
     const darkColor='#'+rgb.map(v=>Math.max(25,Math.round(v*.48)).toString(16).padStart(2,'0')).join('');
@@ -970,6 +986,22 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     addType.addEventListener('click',()=>{const value=typeInput.value.trim();if(!value)return;if(types.includes(value)){typeInput.value='';return;}types.push(value);typeInput.value='';drawTypes();});
     typesWrap.append(typeLabel,addType,typesList);form.appendChild(typesWrap);drawTypes();
     const pubLabel=document.createElement('label');pubLabel.className='switchrow';const pub=document.createElement('input');pub.type='checkbox';pub.checked=!!data.is_public;pubLabel.append(pub,document.createTextNode('このマイキャラ図鑑を共有ページに公開する'));form.appendChild(pubLabel);
+    pub.addEventListener('change',async()=>{
+      const requested=pub.checked;
+      pub.disabled=true;
+      status.textContent=requested?'公開設定を保存しています…':'非公開設定を保存しています…';
+      try{
+        const updated={...data,is_public:requested};
+        const {error}=await client.from('my_characters').update({character_data:updated}).eq('id',character.id).eq('user_id',currentUser.id);
+        if(error)throw error;
+        data.is_public=requested;
+        status.textContent=requested?'共有ページに公開する設定を保存しました。':'共有ページで非公開に設定しました。';
+        scheduleCloudBackup();
+      }catch(error){
+        pub.checked=!requested;
+        status.textContent='公開設定を保存できませんでした：'+(error.message||String(error));
+      }finally{pub.disabled=false;}
+    });
     const status=document.createElement('p');status.className='hint';status.setAttribute('role','status');form.appendChild(status);
     const buttons=document.createElement('div');buttons.className='buttonRow';const save=document.createElement('button');save.type='submit';save.textContent='変更を保存';const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='キャンセル';cancel.addEventListener('click',renderCharacters);buttons.append(save,cancel);form.appendChild(buttons);
     form.addEventListener('submit',e=>{e.preventDefault();runSafely(async()=>{
@@ -1039,6 +1071,18 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       await renderCardMedia(photo,qr,d);
     }
   }
+  function setSharedTab(tab){
+    const characterTab=tab==='characters';
+    $('sharedCharacterTabPanel')?.classList.toggle('hidden',!characterTab);
+    $('sharedCardTabPanel')?.classList.toggle('hidden',characterTab);
+    $('sharedCharactersTab')?.classList.toggle('active',characterTab);
+    $('sharedCardsTab')?.classList.toggle('active',!characterTab);
+    if($('shareHeading'))$('shareHeading').textContent=characterTab?'マイキャラ図鑑':'フレカ図鑑';
+    if(characterTab)window.scrollTo({top:0,behavior:'smooth'});
+  }
+  $('sharedCharactersTab')?.addEventListener('click',()=>setSharedTab('characters'));
+  $('sharedCardsTab')?.addEventListener('click',()=>setSharedTab('cards'));
+
   async function loadSharedCollection(){
     const status=$('sharedStatus'); if(status)status.textContent='図鑑を読み込んでいます…';
     const slug=activeShareSlug;
@@ -1066,6 +1110,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     cards=cardResult.data||[];
     characters=(charResult.data||[]).filter(c=>c.character_data?.is_public===true);
     activeCharacter='all';
+    setSharedTab('characters');
     const sheets=$('sharedCharacterSheets');
     const sheetsPanel=$('sharedCharacterSheetsPanel');
     if(sheets)sheets.replaceChildren();
