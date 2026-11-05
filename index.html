@@ -964,10 +964,20 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     list.appendChild(form);
   }
   async function loadCharacters(){
-    if(!client||!currentUser)return;
+    if(!client||!currentUser){
+      characters=[];
+      renderCharacters();
+      renderCharacterChips();
+      message('characterStatus',!client?'Supabaseに接続していません。接続設定を確認してください。':'ログイン状態を確認できません。ホームから再ログインしてください。');
+      return;
+    }
     const {data,error}=await client.from('my_characters').select('id,character_name,character_data,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false});
-    if(error){message('characterStatus','読み込みエラー：'+error.message);return;}
-    characters=data||[];message('charCount',String(characters.length));updateCharacterOptions();renderCharacters();renderCharacterChips();
+    if(error){
+      message('characterStatus','読み込みエラー：'+error.message);
+      const list=$('charsList');if(list){list.replaceChildren();appendText(list,'p','マイキャラを読み込めませんでした。通信状態とSupabaseの設定を確認して、再読み込みしてください。','muted');}
+      return;
+    }
+    characters=data||[];message('characterStatus','');message('charCount',String(characters.length));updateCharacterOptions();renderCharacters();renderCharacterChips();
   }
   async function renderSharedCards(){
     const list=$('sharedCardsList'); if(!list)return; list.replaceChildren();
