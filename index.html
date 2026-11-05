@@ -319,6 +319,10 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     <div class="sectionHeading"><div><span class="eyebrow" id="shareEyebrow">MY FRIEND CARDS</span><h2 id="shareHeading">フレカ図鑑</h2></div></div>
     <section id="shareViewerPanel" class="panel hidden">
       <p id="shareOwnerName" class="muted"></p>
+      <section id="sharedCharacterSheetsPanel" class="panel">
+        <div class="between"><h3>マイキャラ図鑑</h3><span class="pill">公開中のキャラ</span></div>
+        <div id="sharedCharacterSheets" class="itemList"></div>
+      </section>
       <div id="sharedCharacterChips" class="characterChips"></div>
       <details id="sharedCardSearchPanel" class="panel searchControls">
         <summary class="searchSummary"><span>図鑑を検索・絞り込み</span><span class="summaryHint">タップして開閉</span></summary>
@@ -878,8 +882,8 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     });
     list.appendChild(grid);
   }
-  function renderCharacterDetail(character){
-    const list=$('charsList');if(!list)return;list.replaceChildren();const d=character.character_data||{};activeCharacter=character.id;applyCharacterTheme(character.id);
+  function renderCharacterDetail(character,targetList=null,sharedMode=false){
+    const list=targetList||$('charsList');if(!list)return;list.replaceChildren();const d=character.character_data||{};activeCharacter=character.id;applyCharacterTheme(character.id);
     const color=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';
     const rgb=color.match(/[0-9a-f]{2}/gi).map(v=>parseInt(v,16));
     const darkColor='#'+rgb.map(v=>Math.max(25,Math.round(v*.48)).toString(16).padStart(2,'0')).join('');
@@ -921,7 +925,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
       styles.appendChild(grid);content.appendChild(styles);
     }
     if(d.memo){const memo=document.createElement('section');memo.style.cssText='padding:12px 14px;border:1px dashed '+color+';border-radius:17px;background:#fff';const title=document.createElement('h3');title.textContent='♡ メモ';title.style.cssText='margin:0 0 6px;color:'+darkColor+';font-size:14px';const body=document.createElement('p');body.textContent=d.memo;body.style.cssText='margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:'+darkColor+';line-height:1.7';memo.append(title,body);content.appendChild(memo);}
-    const back=document.createElement('button');back.type='button';back.className='secondary';back.textContent='♡ 一覧にもどる';back.style.cssText='width:100%;border-radius:18px;padding:14px;margin-top:2px;background:'+color+'30;color:#34495a;border:1px solid '+color+'88;font-weight:900';back.addEventListener('click',renderCharacters);content.appendChild(back);
+    const back=document.createElement('button');back.type='button';back.className='secondary';back.textContent='♡ 一覧にもどる';back.style.cssText='width:100%;border-radius:18px;padding:14px;margin-top:2px;background:'+color+'30;color:#34495a;border:1px solid '+color+'88;font-weight:900';if(!sharedMode){back.addEventListener('click',renderCharacters);content.appendChild(back);}
     list.appendChild(panel);
   }
   function renderCharacterEditForm(character){
@@ -1059,7 +1063,16 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     ]);
     if(cardResult.error)throw new Error('フレカを取得できません：'+cardResult.error.message);
     if(charResult.error)throw new Error('マイキャラを取得できません：'+charResult.error.message);
-    cards=cardResult.data||[];characters=charResult.data||[];activeCharacter='all';
+    cards=cardResult.data||[];
+    characters=(charResult.data||[]).filter(c=>c.character_data?.is_public===true);
+    activeCharacter='all';
+    const sheets=$('sharedCharacterSheets');
+    const sheetsPanel=$('sharedCharacterSheetsPanel');
+    if(sheets)sheets.replaceChildren();
+    if(sheetsPanel)sheetsPanel.classList.toggle('hidden',!characters.length);
+    if(sheets&&characters.length){
+      characters.forEach(character=>renderCharacterDetail(character,sheets,true));
+    }
     const sharedSeries=$('sharedSeriesFilter');
     if(sharedSeries){
       const seriesValues=[...new Set(cards.map(c=>String(c.card_data?.series||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'));
