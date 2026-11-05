@@ -824,12 +824,19 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     const selected=characters.find(c=>c.id===activeCharacter)||characters[0];
     activeCharacter=selected.id;
 
-    const selector=document.createElement('div');selector.className='characterChips';selector.style.cssText=characters.length>1?'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px':'display:grid;grid-template-columns:1fr;gap:10px';
+    const selector=document.createElement('div');
+    selector.className='characterCatalogGrid';
+    selector.style.cssText=characters.length>1?'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px':'display:grid;grid-template-columns:1fr;gap:12px';
     characters.forEach(c=>{
-      const b=document.createElement('button');b.type='button';b.textContent=c.character_name;
-      b.classList.toggle('active',c.id===selected.id);
-      b.addEventListener('click',()=>{activeCharacter=c.id;renderCharacters();});
-      selector.appendChild(b);
+      const card=document.createElement('button');card.type='button';
+      card.style.cssText='display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;padding:12px;border:1px solid var(--line,#ccecf8);border-radius:20px;background:var(--white,#fff);color:var(--ink,#244658);font-weight:700;box-shadow:0 5px 18px rgba(68,151,184,.08)';
+      card.classList.toggle('active',c.id===selected.id);
+      const d=c.character_data||{},u=d.image_url||d.image||d.photo_url||d.illustration_url||'';
+      if(u){const im=document.createElement('img');im.src=u;im.alt='';im.style.cssText='width:100%;height:clamp(100px,26vw,170px);object-fit:contain;border-radius:12px;background:var(--soft,#f5fcff)';card.appendChild(im);}
+      else{const ph=document.createElement('span');ph.textContent='イメージ画像準備中';ph.style.cssText='display:flex;align-items:center;justify-content:center;width:100%;height:clamp(100px,26vw,170px);border-radius:12px;background:var(--soft,#f5fcff);color:var(--deep,#7b9ab0);font-size:13px';card.appendChild(ph);}
+      const label=document.createElement('span');label.textContent=c.character_name;label.style.cssText='overflow-wrap:anywhere;font-size:15px';card.appendChild(label);
+      card.addEventListener('click',()=>{activeCharacter=c.id;renderCharacters();});
+      selector.appendChild(card);
     });
     list.appendChild(selector);
 
