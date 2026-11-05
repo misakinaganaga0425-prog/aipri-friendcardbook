@@ -220,7 +220,6 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   <nav class="tabs" aria-label="メインメニュー">
     <button class="active" data-nav="home">⌂<small>ホーム</small></button>
     <button data-nav="characters">♡<small>マイキャラ図鑑</small></button>
-    <button data-nav="characters">♡<small>マイキャラ図鑑</small></button>
     <button data-nav="search">⌕<small>フレカ検索</small></button>
     <button data-nav="register">＋<small>フレカ登録</small></button>
     <button data-nav="share">↗<small>共有</small></button>
@@ -832,7 +831,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     if(withPhoto){stage.className='profilePhoto';stage.textContent='読み込み中…';profile.appendChild(stage);signedImageUrl(withPhoto.card_data.photo_path).then(url=>{if(url){const img=document.createElement('img');img.className='profilePhoto';img.src=url;img.alt=character.character_name;stage.replaceWith(img);}else stage.textContent='イメージ画像準備中';}).catch(()=>stage.textContent='イメージ画像準備中');}
     else{stage.className='profilePlaceholder';stage.textContent='イメージ画像準備中';profile.appendChild(stage);}
     const actions=document.createElement('div');actions.className='profileActions';
-    const edit=document.createElement('button');edit.className='secondary';edit.textContent='マイキャラ編集';edit.addEventListener('click',()=>{catalogue.classList.remove('hidden');profile.classList.add('hidden');const original=$('charsList').querySelector('.characterPick');if(original)original.querySelector('button')?.click();});
+    const edit=document.createElement('button');edit.className='secondary';edit.textContent='マイキャラ編集';edit.addEventListener('click',()=>{catalogue.classList.remove('hidden');profile.classList.add('hidden');const original=[...$('charsList').querySelectorAll('.characterPick')].find(item=>item.querySelector('.itemInfo strong')?.textContent===character.character_name);original?.querySelector('.buttonRow button')?.click();});
     const cardsButton=document.createElement('button');cardsButton.className='secondary';cardsButton.textContent=character.character_name+'のフレカ';cardsButton.addEventListener('click',()=>{activeCharacter=character.id;showView('search');renderCharacterChips();renderCards();});
     actions.append(edit,cardsButton);profile.appendChild(actions);
   }
