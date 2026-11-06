@@ -249,11 +249,9 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     <section class="hero"><span class="pill">MY COLLECTION</span><h2 id="homeTitle">大切なフレンドカードを<br>かわいくまとめよう。</h2><p id="homeMessage">ログインしてフレカとマイキャラを管理しよう。</p></section>
     <section class="panel" id="themePanel">
       <h3>アプリのテーマカラー</h3>
-      <label>好きな色を選んでね
-        <select id="themePalette">
-          <option value="sky">水色</option><option value="pink">ピンク</option><option value="white">白</option><option value="lavender">ラベンダー</option><option value="yellow">黄色</option><option value="green">緑</option>
-        </select>
-        <span class="hint">選んだ色はこの端末に保存され、次回も維持されます。</span>
+      <label>好きな色を自由に選んでね
+        <input id="themePalette" type="color" value="#8bd7f3" aria-label="アプリのテーマカラー" style="width:100%;height:52px;padding:5px;cursor:pointer">
+        <span class="hint">好きな色を細かく選べます。選んだ色はこの端末に保存され、ログイン中は共有ページにも反映されます。</span>
       </label>
     </section>
     <h2>コレクション</h2>
@@ -348,7 +346,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       <p class="hint">OFFにすると、共有ページではマイキャラ図鑑を表示しません。フレカの公開設定とは別です。</p>
       <p id="characterCatalogStatus" class="hint" role="status"></p>
     </section>
-    <section class="panel"><h3>マイキャラ一覧</h3><p class="hint">登録したマイキャラをカードで表示します。2人以上なら2列に並びます。</p><div id="charsList" class="itemList"></div></section>
+    <section class="panel"><h3>マイキャラ一覧</h3><p class="hint">マイキャラの画像をタップするとキャラシートが表示されます。</p><div id="charsList" class="itemList"></div></section>
   </section>
   <section id="share" class="view hidden">
     <div class="sectionHeading"><div><span class="eyebrow" id="shareEyebrow">MY FRIEND CARDS</span><h2 id="shareHeading">フレカ図鑑</h2></div></div>
@@ -465,13 +463,39 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   const validUsername = name => /^[a-zA-Z0-9_]{3,20}$/.test(name);
   const escapeText = value => String(value ?? '');
   const PALETTE_KEY = 'aipri_theme_palette';
+  const PRESET_PALETTES = ['sky','pink','white','lavender','yellow','green'];
   function applyThemePalette(value) {
-    const allowed = ['sky','pink','white','lavender','yellow','green'];
-    const palette = allowed.includes(value) ? value : 'sky';
-    document.documentElement.dataset.palette = palette;
-    const selector = $('themePalette');
-    if (selector && selector.value !== palette) selector.value = palette;
-    localStorage.setItem(PALETTE_KEY, palette);
+    const root=document.documentElement;
+    const raw=String(value||'sky').trim().toLowerCase();
+    if(/^#[0-9a-f]{6}$/.test(raw)){
+      const hex=raw.slice(1),r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
+      const mix=(v,t,a)=>Math.round(v*(1-a)+t*a);
+      const toHex=(v)=>v.toString(16).padStart(2,'0');
+      const tint=(amount)=>'#'+toHex(mix(r,255,amount))+toHex(mix(g,255,amount))+toHex(mix(b,255,amount));
+      const shade=(amount)=>'#'+toHex(mix(r,35,amount))+toHex(mix(g,55,amount))+toHex(mix(b,70,amount));
+      const customDark=shade(.68),customButton=tint(.12),customActive=tint(.78);
+      root.dataset.palette='custom';
+      root.style.setProperty('--sky',tint(.88));
+      root.style.setProperty('--blue',raw);
+      root.style.setProperty('--deep',customDark);
+      root.style.setProperty('--ink',shade(.76));
+      root.style.setProperty('--line',tint(.68));
+      root.style.setProperty('--soft',tint(.94));
+      root.style.setProperty('--theme-bg',tint(.965));
+      root.style.setProperty('--theme-panel','#ffffff');
+      root.style.setProperty('--theme-button',customButton);
+      root.style.setProperty('--theme-button-text',shade(.78));
+      root.style.setProperty('--theme-active',customActive);
+      root.style.setProperty('--theme-accent',customDark);
+      root.style.setProperty('--theme-tag',tint(.90));
+      const selector=$('themePalette');if(selector&&selector.value!==raw)selector.value=raw;
+      localStorage.setItem(PALETTE_KEY,raw);return;
+    }
+    const palette=PRESET_PALETTES.includes(raw)?raw:'sky';
+    root.dataset.palette=palette;
+    root.style.removeProperty('--sky');root.style.removeProperty('--blue');root.style.removeProperty('--deep');root.style.removeProperty('--ink');root.style.removeProperty('--line');root.style.removeProperty('--soft');root.style.removeProperty('--theme-bg');root.style.removeProperty('--theme-panel');root.style.removeProperty('--theme-button');root.style.removeProperty('--theme-button-text');root.style.removeProperty('--theme-active');root.style.removeProperty('--theme-accent');root.style.removeProperty('--theme-tag');
+    const selector=$('themePalette');if(selector&&selector.value!==palette)selector.value=palette;
+    localStorage.setItem(PALETTE_KEY,palette);
   }
   applyThemePalette(localStorage.getItem(PALETTE_KEY) || 'sky');
   $('themePalette')?.addEventListener('change', e => {
