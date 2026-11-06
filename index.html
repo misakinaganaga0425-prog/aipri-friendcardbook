@@ -266,6 +266,11 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
 .sharedTabPanel{min-width:0}
 #sharedCharacterSheets{display:grid;gap:18px}
 #sharedCharacterSheets>.panel{margin:0!important}
+
+/* Uniform QR tiles in both the owner's catalogue and shared catalogue. */
+.catalogueCard .qrStage{width:100%;height:auto;min-height:0;aspect-ratio:1/1;display:grid;place-items:center;overflow:hidden;box-sizing:border-box}
+.catalogueCard .qrStage>img{display:block;width:100%;height:100%;max-width:none;max-height:none;aspect-ratio:1/1;object-fit:contain;box-sizing:border-box}
+.catalogueCard .qrStage>.photoPlaceholder{display:grid;width:100%;height:100%;min-height:0;aspect-ratio:1/1;place-items:center;box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -518,6 +523,15 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   const escapeText = value => String(value ?? '');
   const PALETTE_KEY = 'aipri_theme_palette';
   const PRESET_PALETTES = ['sky','pink','white','lavender','yellow','green'];
+  // Keep one canonical ordering rule for the owner's catalogue and every shared view.
+  function sortCharactersByDisplayOrder(rows){
+    return (rows||[]).map((c,index)=>({...c,_fallbackOrder:index})).sort((a,b)=>{
+      const rawA=a.character_data?.display_order,rawB=b.character_data?.display_order;
+      const ao=Number.isInteger(rawA)&&rawA>=0?rawA:a._fallbackOrder;
+      const bo=Number.isInteger(rawB)&&rawB>=0?rawB:b._fallbackOrder;
+      return ao-bo||a._fallbackOrder-b._fallbackOrder;
+    });
+  }
   function applyThemePalette(value) {
     const root=document.documentElement;
     const raw=String(value||'sky').trim().toLowerCase();
@@ -553,19 +567,24 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   }
   applyThemePalette(localStorage.getItem(PALETTE_KEY) || 'sky');
   let themeSaveTimer=null;
-  function persistThemePalette(palette){
+  async function saveThemePaletteToProfile(palette){
+    if(!currentUser||!client)return;
+    const {data,error}=await client.from('profiles').update({theme_palette:palette}).eq('id',currentUser.id).select('id,theme_palette');
+    if(error)throw error;
+    if(!data?.length)throw new Error('テーマカラーをプロフィールに保存できませんでした。');
+    scheduleCloudBackup();
+  }
+  function persistThemePalette(palette,immediate=false){
+    // applyThemePalette writes to localStorage immediately, so the choice survives reloads
+    // even while the cloud save is pending. The profile copy keeps shared pages in sync.
     applyThemePalette(palette);
     if(!currentUser||!client)return;
     clearTimeout(themeSaveTimer);
-    themeSaveTimer=setTimeout(()=>runSafely(async()=>{
-      const {data,error}=await client.from('profiles').update({theme_palette:palette}).eq('id',currentUser.id).select('id,theme_palette');
-      if(error)throw error;
-      if(!data?.length)throw new Error('テーマカラーをプロフィールに保存できませんでした。');
-      scheduleCloudBackup();
-    }),250);
+    if(immediate){runSafely(()=>saveThemePaletteToProfile(palette));return;}
+    themeSaveTimer=setTimeout(()=>runSafely(()=>saveThemePaletteToProfile(palette)),450);
   }
   $('themePalette')?.addEventListener('input',e=>persistThemePalette(e.target.value));
-  $('themePalette')?.addEventListener('change',e=>persistThemePalette(e.target.value));
+  $('themePalette')?.addEventListener('change',e=>persistThemePalette(e.target.value,true));
 
   function showView(viewName) {
     document.querySelectorAll('.view').forEach(view => view.classList.toggle('hidden', view.id !== viewName));
@@ -887,7 +906,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         .select('id,character_name,character_data,created_at')
         .eq('user_id',currentUser.id).order('created_at',{ascending:false});
       if(verifyError)throw verifyError;
-      characters=verified||[];
+      characters=sortCharactersByDisplayOrder(verified||[]);
       const allPublic=characters.length>0&&characters.every(c=>c.character_data?.is_public===true);
       if(toggle)toggle.checked=allPublic;
       if(status)status.textContent=allPublic?'登録済みのマイキャラを共有ページに公開しました。':'登録済みのマイキャラを非公開にしました。';
@@ -1302,12 +1321,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const list=$('charsList');if(list){list.replaceChildren();appendText(list,'p','マイキャラを読み込めませんでした。通信状態とSupabaseの設定を確認して、再読み込みしてください。','muted');}
       return;
     }
-    characters=(data||[]).map((c,index)=>({...c,_fallbackOrder:index})).sort((a,b)=>{
-      const av=Number(a.character_data?.display_order),bv=Number(b.character_data?.display_order);
-      const ao=Number.isFinite(av)?av:a._fallbackOrder;
-      const bo=Number.isFinite(bv)?bv:b._fallbackOrder;
-      return ao-bo || a._fallbackOrder-b._fallbackOrder;
-    });
+    characters=sortCharactersByDisplayOrder(data||[]);
     const catalogToggle=$('characterCatalogPublic');
     if(catalogToggle){catalogToggle.checked=characters.length>0&&characters.every(c=>c.character_data?.is_public===true);catalogToggle.disabled=!characters.length;}
     message('characterStatus','');message('charCount',String(characters.length));updateCharacterOptions();renderCharacters();renderCharacterChips();
@@ -1386,12 +1400,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(cardResult.error)throw new Error('フレカを取得できません：'+cardResult.error.message);
     if(charResult.error)throw new Error('マイキャラを取得できません：'+charResult.error.message);
     cards=cardResult.data||[];
-    characters=(charResult.data||[]).filter(c=>c.character_data?.is_public===true).map((c,index)=>({...c,_fallbackOrder:index})).sort((a,b)=>{
-      const av=Number(a.character_data?.display_order),bv=Number(b.character_data?.display_order);
-      const ao=Number.isFinite(av)?av:a._fallbackOrder;
-      const bo=Number.isFinite(bv)?bv:b._fallbackOrder;
-      return ao-bo || a._fallbackOrder-b._fallbackOrder;
-    });
+    characters=sortCharactersByDisplayOrder((charResult.data||[]).filter(c=>c.character_data?.is_public===true));
     activeCharacter='all';
     setSharedTab('characters');
     const sheets=$('sharedCharacterSheets');
