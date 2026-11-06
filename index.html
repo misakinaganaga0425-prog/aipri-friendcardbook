@@ -836,7 +836,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   async function signedImageUrl(path){
     if(!path||!client)return null;
     const value=String(path);
-    if(/^https?:\\/\\//i.test(value))return value;
+    if(/^https?:\/\//i.test(value))return value;
     try{
       const {data,error}=await client.storage.from(BUCKET).createSignedUrl(value,3600);
       if(!error&&data?.signedUrl)return data.signedUrl;
@@ -1329,13 +1329,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   $('restoreBackup')?.addEventListener('click',restoreLocalBackup);
   $('restoreCloudBackup')?.addEventListener('click',restoreLatestCloudBackup);
 
-$('characterCatalogPublic')?.addEventListener('change',()=>runSafely(async()=>{
-    if(!currentUser||!client){$('characterCatalogPublic').checked=false;return;}
-    const {error}=await client.from('profiles').update({character_catalog_public:$('characterCatalogPublic').checked}).eq('id',currentUser.id);
-    if(error){$('characterCatalogPublic').checked=false;throw error;}
-    message('characterCatalogStatus','図鑑の公開設定を保存しました。');scheduleCloudBackup();
-  }));
-  $('signupBtn')?.addEventListener('click',()=>runSafely(signUp));
+$('signupBtn')?.addEventListener('click',()=>runSafely(signUp));
   $('loginBtn')?.addEventListener('click',()=>runSafely(async()=>{await boot();await signIn();}));
   $('addCard')?.addEventListener('click',()=>runSafely(addCard));
   $('addChar')?.addEventListener('click',()=>runSafely(addCharacter));
