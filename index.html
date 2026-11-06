@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#eaf8ff">
   <title>アイプリ フレンドカード図鑑</title>
-  <style>
+  <style>.adminSettingsDisclosure{margin:18px 4px 8px;text-align:center;color:var(--muted);font-size:11px;opacity:.72}
+.adminSettingsDisclosure summary{display:inline-block;cursor:pointer;padding:5px 9px;list-style:none}
+.adminSettingsDisclosure summary::-webkit-details-marker{display:none}
+.adminSettingsButton{display:block;margin:8px auto 0!important;padding:7px 12px!important;min-height:30px!important;font-size:11px!important;border-radius:10px!important;opacity:.8}
+
 /* User-selectable pastel themes */
 :root[data-palette="sky"]{--sky:#eaf8ff;--blue:#8bd7f3;--deep:#28627e;--ink:#244658;--line:#ccecf8;--soft:#f5fcff;--theme-bg:#f7fcff;--theme-panel:#ffffff;--theme-button:#75c9ec;--theme-button-text:#123f56;--theme-active:#dff5ff;--theme-accent:#24779a;--theme-tag:#e9f8ff}
 :root[data-palette="pink"]{--sky:#fff0f7;--blue:#f2b8d5;--deep:#874a6b;--ink:#63445a;--line:#f4d2e3;--soft:#fff8fc;--theme-bg:#fff8fc;--theme-panel:#fff;--theme-button:#f2bfd8;--theme-button-text:#633d55;--theme-active:#ffe2ef;--theme-accent:#a8547d;--theme-tag:#ffedf5}
@@ -228,7 +232,6 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     <p id="status" role="status" aria-live="polite"></p>
     <button id="clear" class="secondary" type="button">保存した接続設定を削除</button>
   </section>
-  <button id="openSettings" class="secondary" type="button" style="display:block;margin:10px auto">Supabase接続設定</button>
   <nav class="tabs" aria-label="メインメニュー">
     <button class="active" data-nav="home">⌂<small>ホーム</small></button>
     <button data-nav="characters">♡<small>マイキャラ図鑑</small></button>
@@ -274,6 +277,10 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       <p id="backupStatus" class="hint" role="status"></p>
       <p class="hint">復元は既存データを削除せず、同じIDのデータを更新・不足分を追加する方式です。復元前に現在のデータもバックアップすることをおすすめします。</p>
     </section>
+    <details class="adminSettingsDisclosure">
+      <summary>管理者のみ使用</summary>
+      <button id="openSettings" class="secondary adminSettingsButton" type="button">Supabase接続設定</button>
+    </details>
   </section>
   <section id="search" class="view hidden">
     <div class="sectionHeading"><div><span class="eyebrow">MY FRIEND CARDS</span><h2>フレカ検索</h2></div><span class="pill">COLLECTION</span></div>
@@ -838,7 +845,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
             if(mainPath){
               const img=document.createElement('img');img.alt=c.character_name+'のメイン画像';img.loading='lazy';img.style.cssText='width:100%;height:100%;object-fit:contain';
               frame.textContent='画像を読み込み中…';
-              (async()=>{try{const url=String(mainPath).startsWith('http')?mainPath:await signedImageUrl(mainPath);if(url){img.src=url;frame.replaceChildren(img);}else frame.textContent='画像なし';}catch(e){frame.textContent='画像を読み込めません';console.warn(e);}})();
+              (async()=>{try{const url=String(mainPath).startsWith('http')?mainPath:await signedImageUrl(mainPath,{width:480,height:640,quality:70,resize:'contain'});if(url){img.decoding='async';img.fetchPriority='low';img.src=url;frame.replaceChildren(img);}else frame.textContent='画像なし';}catch(e){frame.textContent='画像を読み込めません';console.warn(e);}})();
             }else{frame.textContent='メイン画像未登録';frame.style.color='var(--muted)';}
             const name=document.createElement('span');name.textContent=c.character_name;name.style.cssText='font-weight:800;font-size:14px;overflow-wrap:anywhere;text-align:center';
             card.append(frame,name);card.addEventListener('click',()=>{activeCharacter=c.id;showView('search');renderCharacterChips();renderCards();});container.appendChild(card);
@@ -847,28 +854,53 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       }
     });
   }
-  async function signedImageUrl(path){
+  const imageUrlCache=new Map();
+  async function signedImageUrl(path,transform=null){
     if(!path||!client)return null;
     const value=String(path);
-    if(/^https?:\/\//i.test(value))return value;
-    try{
-      const {data,error}=await client.storage.from(BUCKET).createSignedUrl(value,3600);
-      if(!error&&data?.signedUrl)return data.signedUrl;
-      console.warn('署名付き画像URLを取得できません。公開URLを試します。',error?.message||'URLなし');
-    }catch(error){console.warn('署名付き画像URLの取得に失敗しました',error);}
-    // Shared pages are anonymous. Public buckets can still serve images even when
-    // createSignedUrl is denied by Storage RLS.
-    try{
-      const {data}=client.storage.from(BUCKET).getPublicUrl(value);
-      if(data?.publicUrl)return data.publicUrl;
-    }catch(error){console.warn('公開画像URLの取得に失敗しました',error);}
-    return null;
+    if(/^https?:\\/\\//i.test(value))return value;
+    const transformKey=transform?JSON.stringify(transform):'original';
+    const cacheKey=value+'|'+transformKey;
+    if(imageUrlCache.has(cacheKey))return imageUrlCache.get(cacheKey);
+    const task=(async()=>{
+      const storage=client.storage.from(BUCKET);
+      if(transform){
+        try{
+          const {data,error}=await storage.createSignedUrl(value,3600,{transform});
+          if(!error&&data?.signedUrl)return data.signedUrl;
+        }catch(error){console.warn('最適化画像URLを取得できません。元画像を使用します。',error);}
+      }
+      try{
+        const {data,error}=await storage.createSignedUrl(value,3600);
+        if(!error&&data?.signedUrl)return data.signedUrl;
+      }catch(error){console.warn('署名付き画像URLの取得に失敗しました',error);}
+      try{
+        const options=transform?{transform}:{};
+        const {data}=storage.getPublicUrl(value,options);
+        if(data?.publicUrl)return data.publicUrl;
+      }catch(error){console.warn('公開画像URLの取得に失敗しました',error);}
+      return null;
+    })();
+    imageUrlCache.set(cacheKey,task);
+    const result=await task;
+    if(!result)imageUrlCache.delete(cacheKey);
+    return result;
   }
   function appendText(parent,tag,text,className){const el=document.createElement(tag);el.textContent=escapeText(text);if(className)el.className=className;parent.appendChild(el);return el;}
   async function renderCardMedia(photoStage,qrStage,data){
-    photoStage.style.aspectRatio=data?.photo_orientation==='landscape'?'3 / 2':'988 / 1536';
-    if(data?.photo_path){const url=await signedImageUrl(data.photo_path);if(url){const img=document.createElement('img');img.src=url;img.alt='コーデ写真';img.loading='lazy';photoStage.replaceChildren(img);}}
-    if(data?.qr_path){const url=await signedImageUrl(data.qr_path);if(url){const img=document.createElement('img');img.src=url;img.alt='フレンドコードQR';img.loading='lazy';qrStage.replaceChildren(img);}}
+    const landscape=data?.photo_orientation==='landscape';
+    photoStage.style.aspectRatio=landscape?'3 / 2':'988 / 1536';
+    const tasks=[];
+    if(data?.photo_path)tasks.push((async()=>{
+      const transform={width:landscape?1200:900,height:landscape?800:1400,quality:76,resize:'contain'};
+      const url=await signedImageUrl(data.photo_path,transform);
+      if(url){const img=document.createElement('img');img.alt='コーデ写真';img.loading='lazy';img.decoding='async';img.fetchPriority='low';img.src=url;photoStage.replaceChildren(img);}
+    })());
+    if(data?.qr_path)tasks.push((async()=>{
+      const url=await signedImageUrl(data.qr_path);
+      if(url){const img=document.createElement('img');img.alt='フレンドコードQR';img.loading='lazy';img.decoding='async';img.fetchPriority='low';img.src=url;qrStage.replaceChildren(img);}
+    })());
+    await Promise.all(tasks);
   }
   function renderCards(){
     const list=$('cardsList');if(!list)return;list.replaceChildren();const count=$('searchResultCount');
@@ -1023,7 +1055,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const introText=document.createElement('div');introText.textContent=d.intro||'紹介文はまだ登録されていません。';introText.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;flex:1;display:grid;place-items:center;text-align:center;padding:10px 6px;border-radius:16px;background:#fff;color:'+darkColor+';font-size:clamp(11px,3vw,14px);font-weight:700;line-height:1.8;min-height:160px';
     introBox.append(introTitle,introText);top.append(coverBox,introBox);content.appendChild(top);
     if(coverPath){
-      runSafely(async()=>{const url=String(coverPath).startsWith('http')?coverPath:await signedImageUrl(coverPath);if(url){const img=document.createElement('img');img.src=url;img.alt=character.character_name+'のメイン画像';img.loading='lazy';img.style.cssText='display:block;width:100%;height:100%;max-height:390px;object-fit:contain;border-radius:14px';coverBox.replaceChildren(img);}else coverBox.textContent='メイン画像を読み込めません';});
+      runSafely(async()=>{const url=String(coverPath).startsWith('http')?coverPath:await signedImageUrl(coverPath,{width:900,height:1400,quality:76,resize:'contain'});if(url){const img=document.createElement('img');img.src=url;img.alt=character.character_name+'のメイン画像';img.loading='lazy';img.decoding='async';img.fetchPriority='low';img.style.cssText='display:block;width:100%;height:100%;max-height:390px;object-fit:contain;border-radius:14px';coverBox.replaceChildren(img);}else coverBox.textContent='メイン画像を読み込めません';});
     }else{const ph=document.createElement('div');ph.textContent='メイン画像';ph.style.cssText='display:grid;place-items:center;min-height:190px;color:#64798a;font-weight:800;text-align:center';coverBox.appendChild(ph);}
     const meta=document.createElement('section');meta.style.cssText='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px;border:2px solid '+color+'66;border-radius:20px;background:linear-gradient(90deg,'+color+'20,#fff,'+color+'18)';
     const metaCell=(label,value,kind)=>{if(!value)return;const cell=document.createElement('div');cell.style.cssText='min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border-radius:13px;background:#fff;border:1px solid '+color+'55;text-align:center';const a=document.createElement('strong');a.textContent=label;a.style.cssText='color:'+darkColor+';font-size:clamp(10px,2.8vw,12px);font-weight:900';const b=document.createElement('span');b.style.cssText='color:'+darkColor+';font-weight:900;font-size:clamp(11px,3vw,13px);overflow-wrap:anywhere';if(kind==='swatch'){b.style.cssText+='display:block;width:24px;height:24px;border-radius:50%;background:'+color+';border:2px solid #fff;box-shadow:0 0 0 1px '+darkColor+'66';b.textContent='';}else b.textContent=value;cell.append(a,b);meta.appendChild(cell);};
@@ -1039,7 +1071,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         const frame=document.createElement('div');frame.style.cssText='width:100%;aspect-ratio:1/1;display:grid;place-items:center;overflow:hidden;border-radius:13px;background:'+color+'18';
         const label=document.createElement('div');label.textContent=photo.name||'スタイル';label.style.cssText='margin:7px 0 1px;color:'+darkColor+';font-size:clamp(11px,3vw,14px);font-weight:900;overflow-wrap:anywhere';
         item.append(frame,label);grid.appendChild(item);
-        if(photo.path)runSafely(async()=>{const url=String(photo.path).startsWith('http')?photo.path:await signedImageUrl(photo.path);if(url){const img=document.createElement('img');img.src=url;img.alt=(photo.name||'スタイル')+'の写真';img.loading='lazy';img.style.cssText='width:100%;height:100%;object-fit:cover';frame.replaceChildren(img);}else frame.textContent='写真を読み込めません';});else frame.textContent='登録画像';
+        if(photo.path)runSafely(async()=>{const url=String(photo.path).startsWith('http')?photo.path:await signedImageUrl(photo.path,{width:600,height:600,quality:74,resize:'contain'});if(url){const img=document.createElement('img');img.src=url;img.alt=(photo.name||'スタイル')+'の写真';img.loading='lazy';img.decoding='async';img.fetchPriority='low';img.style.cssText='width:100%;height:100%;object-fit:cover';frame.replaceChildren(img);}else frame.textContent='写真を読み込めません';});else frame.textContent='登録画像';
       });
       styles.appendChild(grid);content.appendChild(styles);
     }
