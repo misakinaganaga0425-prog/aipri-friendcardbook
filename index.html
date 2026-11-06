@@ -448,10 +448,13 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   }
   applyThemePalette(localStorage.getItem(PALETTE_KEY) || 'sky');
   $('themePalette')?.addEventListener('change', e => {
-    applyThemePalette(e.target.value);
+    const palette=e.target.value;
+    applyThemePalette(palette);
     if (currentUser && client) runSafely(async () => {
-      const {error}=await client.from('profiles').update({theme_palette:e.target.value}).eq('id',currentUser.id);
-      if(error) throw error;scheduleCloudBackup();
+      const {data,error}=await client.from('profiles').update({theme_palette:palette}).eq('id',currentUser.id).select('id,theme_palette');
+      if(error) throw error;
+      if(!data?.length)throw new Error('テーマカラーをプロフィールに保存できませんでした。');
+      scheduleCloudBackup();
     });
   });
 
@@ -752,26 +755,41 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
   async function saveCharacterCatalogVisibility(visible){
     const toggle=$('characterCatalogPublic'),status=$('characterCatalogStatus');
     if(!currentUser||!client){if(toggle)toggle.checked=false;if(status)status.textContent='ログインしてから設定してください。';return;}
+    if(!characters.length){if(toggle)toggle.checked=false;if(status)status.textContent='公開するマイキャラがまだ登録されていません。';return;}
     if(toggle)toggle.disabled=true;
     if(status)status.textContent=visible?'マイキャラ図鑑の公開設定を保存しています…':'非公開設定を保存しています…';
-    const changed=[];
+    const snapshots=characters.map(c=>({character:c,data:{...(c.character_data||{})}}));
     try{
-      for(const character of characters){
-        const next={...(character.character_data||{}),is_public:visible};
-        const {error}=await client.from('my_characters').update({character_data:next}).eq('id',character.id).eq('user_id',currentUser.id);
+      for(const item of snapshots){
+        const next={...item.data,is_public:visible};
+        const {data,error}=await client.from('my_characters')
+          .update({character_data:next})
+          .eq('id',item.character.id).eq('user_id',currentUser.id)
+          .select('id');
         if(error)throw error;
-        changed.push(character);
-        character.character_data=next;
+        if(!data||data.length!==1)throw new Error(item.character.character_name+' の公開設定を保存できませんでした。更新権限を確認してください。');
+        item.character.character_data=next;
       }
-      if(status)status.textContent=visible?'登録済みのマイキャラを共有ページに公開しました。':'登録済みのマイキャラを共有ページで非公開にしました。';
+      // Read back from the database so the checkbox reflects persisted values.
+      const {data:verified,error:verifyError}=await client.from('my_characters')
+        .select('id,character_name,character_data,created_at')
+        .eq('user_id',currentUser.id).order('created_at',{ascending:false});
+      if(verifyError)throw verifyError;
+      characters=verified||[];
+      const allPublic=characters.length>0&&characters.every(c=>c.character_data?.is_public===true);
+      if(toggle)toggle.checked=allPublic;
+      if(status)status.textContent=allPublic?'登録済みのマイキャラを共有ページに公開しました。':'登録済みのマイキャラを非公開にしました。';
+      renderCharacters();
       scheduleCloudBackup();
     }catch(error){
-      for(const character of changed){
-        const previous={...(character.character_data||{}),is_public:!visible};
-        await client.from('my_characters').update({character_data:previous}).eq('id',character.id).eq('user_id',currentUser.id);
-        character.character_data=previous;
+      // Restore only rows changed by this operation.
+      for(const item of snapshots){
+        const oldData=item.data;
+        await client.from('my_characters').update({character_data:oldData})
+          .eq('id',item.character.id).eq('user_id',currentUser.id);
+        item.character.character_data=oldData;
       }
-      if(toggle)toggle.checked=!visible;
+      if(toggle)toggle.checked=snapshots.length>0&&snapshots.every(x=>x.data.is_public===true);
       if(status)status.textContent='公開設定を保存できませんでした：'+(error.message||String(error));
     }finally{if(toggle)toggle.disabled=false;}
   }
@@ -1124,7 +1142,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     }
     if(profileError)throw new Error('公開プロフィールを取得できません：'+profileError.message);
     if(!profile)throw new Error('この図鑑は非公開、または共有リンクが無効です。');
-    if(profile.theme_palette)applyThemePalette(profile.theme_palette);
+    applyThemePalette(localStorage.getItem(PALETTE_KEY)||profile.theme_palette||'sky');
     $('shareOwnerName').textContent=profile.display_name ? profile.display_name+' さんのフレカ図鑑' : 'フレカ図鑑';
     const [cardResult,charResult]=await Promise.all([
       client.from('cards').select('id,card_name,card_data,character_id,is_public,created_at').eq('user_id',profile.id).eq('is_public',true).order('created_at',{ascending:false}),
