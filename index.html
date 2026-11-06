@@ -858,7 +858,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   async function signedImageUrl(path,transform=null){
     if(!path||!client)return null;
     const value=String(path);
-    if(/^https?:\\/\\//i.test(value))return value;
+    if(/^https?:\/\//i.test(value))return value;
     const transformKey=transform?JSON.stringify(transform):'original';
     const cacheKey=value+'|'+transformKey;
     if(imageUrlCache.has(cacheKey))return imageUrlCache.get(cacheKey);
