@@ -183,6 +183,15 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 @media(max-width:420px){#registeredCardsPanel .manageSearchPanel .filterGrid,#sharedCardSearchPanel .filterGrid{grid-template-columns:1fr;gap:0}}
 @media(max-width:360px){#sharedCardsList{gap:7px}#sharedCardsList .catalogueCard{padding:7px}#sharedCardsList .catalogueCard .cardBottom{gap:4px}}
 
+
+/* iOS Safari zooms the page when a focused form control uses text smaller than 16px. */
+input, select, textarea, button[contenteditable="true"], [contenteditable="true"]{
+  font-size:16px;
+}
+@media(max-width:600px){
+  input,select,textarea{font-size:16px!important;line-height:1.4}
+  input[type="file"],input[type="checkbox"],input[type="radio"],input[type="color"],input[type="range"]{font-size:16px}
+}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -825,8 +834,21 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
     });
   }
   async function signedImageUrl(path){
-    if(!path||!client)return null;const {data,error}=await client.storage.from(BUCKET).createSignedUrl(path,3600);
-    if(error){console.warn('画像を読み込めませんでした',error.message);return null;}return data?.signedUrl||null;
+    if(!path||!client)return null;
+    const value=String(path);
+    if(/^https?:\\/\\//i.test(value))return value;
+    try{
+      const {data,error}=await client.storage.from(BUCKET).createSignedUrl(value,3600);
+      if(!error&&data?.signedUrl)return data.signedUrl;
+      console.warn('署名付き画像URLを取得できません。公開URLを試します。',error?.message||'URLなし');
+    }catch(error){console.warn('署名付き画像URLの取得に失敗しました',error);}
+    // Shared pages are anonymous. Public buckets can still serve images even when
+    // createSignedUrl is denied by Storage RLS.
+    try{
+      const {data}=client.storage.from(BUCKET).getPublicUrl(value);
+      if(data?.publicUrl)return data.publicUrl;
+    }catch(error){console.warn('公開画像URLの取得に失敗しました',error);}
+    return null;
   }
   function appendText(parent,tag,text,className){const el=document.createElement(tag);el.textContent=escapeText(text);if(className)el.className=className;parent.appendChild(el);return el;}
   async function renderCardMedia(photoStage,qrStage,data){
