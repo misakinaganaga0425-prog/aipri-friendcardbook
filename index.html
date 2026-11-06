@@ -998,10 +998,15 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const img=document.createElement('img');
       img.alt=alt;img.loading='lazy';img.decoding='async';
       img.addEventListener('load',()=>{if(stage.isConnected)stage.replaceChildren(img);},{once:true});
-      img.addEventListener('error',()=>{
-        // Retain the placeholder rather than displaying a broken-image icon.
-        console.warn('画像を読み込めませんでした:',alt);
-      },{once:true});
+      img.addEventListener('error',async()=>{
+        // A signed URL can be returned successfully yet fail when the bucket is public-only.
+        // Retry once with the bucket's public URL before leaving the placeholder visible.
+        try{
+          const publicUrl=client?.storage?.from(BUCKET)?.getPublicUrl(String(path)).data?.publicUrl;
+          if(publicUrl&&publicUrl!==img.src&&!img.dataset.publicRetry){img.dataset.publicRetry='1';img.src=publicUrl;return;}
+        }catch(retryError){console.warn('公開画像URLへの再試行に失敗しました',retryError);}
+        console.warn('画像を読み込めませんでした:',alt,'path:',path);
+      });
       img.src=url;
     };
     await Promise.all([
@@ -1089,7 +1094,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         const {error}=await client.from('cards').delete().eq('id',card.id).eq('user_id',currentUser.id);if(error)throw error;
         if(editingCardId===card.id)resetCardForm();message('cardRegisterStatus','フレカを削除しました。');scheduleCloudBackup();await loadCards();
       }));
-      actions.append(edit,profileEdit,del);item.append(info,details,actions);list.appendChild(item);
+      actions.append(edit,profileEdit,del);info.appendChild(actions);item.appendChild(info);list.appendChild(item);
     });
   }
   async function loadCards(){
