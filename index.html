@@ -948,6 +948,29 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(error){message('cardRegisterStatus','読み込みエラー：'+error.message);return;}
     cards=data||[];message('cardCount',String(cards.length));updateSeriesFilterOptions();renderCards();renderManageCards();
   }
+  async function moveCharacterOrder(characterId,direction){
+    const from=characters.findIndex(c=>c.id===characterId),to=from+direction;
+    if(from<0||to<0||to>=characters.length)return;
+    if(!currentUser||!client)return message('characterStatus','並び替えにはログインが必要です。');
+    const previous=[...characters];
+    const reordered=[...characters];const [picked]=reordered.splice(from,1);reordered.splice(to,0,picked);
+    characters=reordered;renderCharacters();renderCharacterChips();
+    message('characterStatus','表示順を保存しています…');
+    try{
+      for(let i=0;i<characters.length;i++){
+        const c=characters[i],next={...(c.character_data||{}),display_order:i};
+        const {data,error}=await client.from('my_characters').update({character_data:next})
+          .eq('id',c.id).eq('user_id',currentUser.id).select('id');
+        if(error)throw error;
+        if(!data||data.length!==1)throw new Error(c.character_name+' の順番を保存できませんでした。');
+        c.character_data=next;
+      }
+      message('characterStatus','マイキャラの表示順を保存しました！');scheduleCloudBackup();
+    }catch(error){
+      characters=previous;renderCharacters();renderCharacterChips();
+      message('characterStatus','並び替えを保存できませんでした：'+error.message);
+    }
+  }
   function renderCharacters(){
     const list=$('charsList');if(!list)return;list.replaceChildren();
     if(!currentUser){appendText(list,'p','ログインするとマイキャラ図鑑を表示できます。','muted');return;}
@@ -958,7 +981,11 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const d=c.character_data||{};
       const card=document.createElement('article');
       const theme=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';card.style.cssText='min-width:0;padding:12px;border:2px solid '+theme+'66;border-radius:22px;background:linear-gradient(145deg,#fff,'+theme+'18);box-shadow:var(--shadow);text-align:center';
-      const title=document.createElement('h3');title.textContent=c.character_name;title.style.cssText='margin:4px 0 10px;color:'+theme+';overflow-wrap:anywhere;font-weight:900';card.appendChild(title);
+      const title=document.createElement('h3');title.textContent=c.character_name;title.style.cssText='margin:4px 0 8px;color:'+theme+';overflow-wrap:anywhere;font-weight:900';card.appendChild(title);
+      const orderControls=document.createElement('div');orderControls.style.cssText='display:flex;justify-content:center;gap:8px;margin:0 0 9px';
+      const up=document.createElement('button');up.type='button';up.className='secondary';up.textContent='↑ 上へ';up.disabled=characters.indexOf(c)===0;up.setAttribute('aria-label',c.character_name+'を1つ上へ');up.style.cssText='padding:5px 10px;min-height:32px;font-size:12px;border-radius:10px';up.addEventListener('click',()=>moveCharacterOrder(c.id,-1));
+      const down=document.createElement('button');down.type='button';down.className='secondary';down.textContent='↓ 下へ';down.disabled=characters.indexOf(c)===characters.length-1;down.setAttribute('aria-label',c.character_name+'を1つ下へ');down.style.cssText='padding:5px 10px;min-height:32px;font-size:12px;border-radius:10px';down.addEventListener('click',()=>moveCharacterOrder(c.id,1));
+      orderControls.append(up,down);card.appendChild(orderControls);
       const imgBox=document.createElement('div');imgBox.style.cssText='display:flex;align-items:center;justify-content:center;width:100%;height:clamp(120px,32vw,210px);margin:0 auto 12px;border-radius:14px;background:var(--soft);overflow:hidden';
       const img=document.createElement('img');img.alt=c.character_name;img.loading='lazy';img.style.cssText='width:100%;height:100%;object-fit:contain';
       const mainPath=d.main_image_path||d.image_path||d.image_url||d.image||d.photo_url||d.illustration_url;
@@ -1109,7 +1136,11 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const list=$('charsList');if(list){list.replaceChildren();appendText(list,'p','マイキャラを読み込めませんでした。通信状態とSupabaseの設定を確認して、再読み込みしてください。','muted');}
       return;
     }
-    characters=data||[];
+    characters=(data||[]).map((c,index)=>({...c,_fallbackOrder:index})).sort((a,b)=>{
+      const ao=Number.isInteger(a.character_data?.display_order)?a.character_data.display_order:a._fallbackOrder;
+      const bo=Number.isInteger(b.character_data?.display_order)?b.character_data.display_order:b._fallbackOrder;
+      return ao-bo;
+    });
     const catalogToggle=$('characterCatalogPublic');
     if(catalogToggle){catalogToggle.checked=characters.length>0&&characters.every(c=>c.character_data?.is_public===true);catalogToggle.disabled=!characters.length;}
     message('characterStatus','');message('charCount',String(characters.length));updateCharacterOptions();renderCharacters();renderCharacterChips();
@@ -1188,7 +1219,11 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(cardResult.error)throw new Error('フレカを取得できません：'+cardResult.error.message);
     if(charResult.error)throw new Error('マイキャラを取得できません：'+charResult.error.message);
     cards=cardResult.data||[];
-    characters=(charResult.data||[]).filter(c=>c.character_data?.is_public===true);
+    characters=(charResult.data||[]).filter(c=>c.character_data?.is_public===true).map((c,index)=>({...c,_fallbackOrder:index})).sort((a,b)=>{
+      const ao=Number.isInteger(a.character_data?.display_order)?a.character_data.display_order:a._fallbackOrder;
+      const bo=Number.isInteger(b.character_data?.display_order)?b.character_data.display_order:b._fallbackOrder;
+      return ao-bo;
+    });
     activeCharacter='all';
     setSharedTab('characters');
     const sheets=$('sharedCharacterSheets');
