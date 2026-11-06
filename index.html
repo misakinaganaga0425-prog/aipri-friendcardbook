@@ -213,6 +213,49 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
 .catalogueCard .photoStage,
 .catalogueCard .qrStage{border-color:var(--character-accent,var(--line))!important}
 .characterChips button[data-character-color]{border-color:var(--character-accent,var(--line));color:var(--character-accent-dark,var(--ink))}
+
+/* App-wide palette: readable typography and neutral settings follow the HOME color. */
+:root[data-palette]{
+ --muted:var(--theme-accent);
+}
+:root[data-palette] .hint,:root[data-palette] .muted,
+:root[data-palette] .hero p,:root[data-palette] .stats small,
+:root[data-palette] .stats strong,:root[data-palette] .brand small,
+:root[data-palette] .eyebrow,:root[data-palette] .sectionHeading,
+:root[data-palette] label,:root[data-palette] .item p,
+:root[data-palette] .appearanceName,:root[data-palette] footer,
+:root[data-palette] .summaryHint{
+ color:var(--theme-accent);
+}
+:root[data-palette] button.secondary,
+:root[data-palette] #backupPanel button.secondary{
+ background:var(--theme-tag);border-color:var(--line);color:var(--theme-button-text);
+}
+:root[data-palette] #backupPanel input[type=file]{
+ background:var(--soft);border-color:var(--line);color:var(--ink);
+}
+:root[data-palette] .photoPlaceholder{
+ background:var(--soft);border-color:var(--line);color:var(--theme-accent);
+}
+:root[data-palette] .characterChips button{
+ background:var(--theme-button);border-color:var(--line);color:var(--theme-button-text);
+}
+:root[data-palette] .characterChips button.active{
+ background:var(--theme-active);border-color:var(--blue);color:var(--theme-accent);
+}
+/* Character colors are deliberately limited to the card and its selected filter. */
+:root[data-palette] .characterChips button[data-character-color="1"]{
+ background:var(--character-accent-soft)!important;
+ border-color:var(--character-accent)!important;
+ color:var(--character-accent-dark)!important;
+}
+:root[data-palette] .catalogueCard .characterName{
+ background:var(--character-accent,var(--theme-button))!important;
+ color:var(--character-accent-dark,var(--theme-button-text))!important;
+}
+:root[data-palette] .catalogueCard .appearanceName{
+ color:var(--character-accent-dark,var(--theme-accent))!important;
+}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -865,7 +908,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       if(!currentUser){const p=document.createElement('p');p.className='muted';p.textContent='ログインするとマイキャラが表示されます。';container.appendChild(p);return;}
       if(index===0){
         const all=document.createElement('button');all.textContent='全マイキャラ';all.classList.toggle('active',activeCharacter==='all');all.addEventListener('click',()=>{activeCharacter='all';renderCharacterChips();renderCards();});container.appendChild(all);
-        characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);if(activeCharacter===c.id){const col=c.character_data?.sheet_color;if(/^#[0-9a-f]{6}$/i.test(col||'')){b.dataset.characterColor='1';b.style.backgroundColor=col+'33';b.style.borderColor=col;b.style.color=col;}}b.addEventListener('click',()=>{activeCharacter=c.id;renderCharacterChips();renderCards();});container.appendChild(b);});
+        characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);if(activeCharacter===c.id){const col=c.character_data?.sheet_color;if(/^#[0-9a-f]{6}$/i.test(col||'')){b.dataset.characterColor='1';applyCardCharacterAccent(b,c);}}b.addEventListener('click',()=>{activeCharacter=c.id;renderCharacterChips();renderCards();});container.appendChild(b);});
       }else{
         if(!characters.length){const p=document.createElement('p');p.className='muted';p.textContent='マイキャラはまだ登録されていません。';container.appendChild(p);}
         else{
@@ -925,17 +968,25 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   async function renderCardMedia(photoStage,qrStage,data){
     const landscape=data?.photo_orientation==='landscape';
     photoStage.style.aspectRatio=landscape?'3 / 2':'988 / 1536';
-    const tasks=[];
-    if(data?.photo_path)tasks.push((async()=>{
-      const transform={width:landscape?1200:900,height:landscape?800:1400,quality:76,resize:'contain'};
-      const url=await signedImageUrl(data.photo_path,transform);
-      if(url){const img=document.createElement('img');img.alt='コーデ写真';img.loading='lazy';img.decoding='async';img.fetchPriority='low';img.src=url;photoStage.replaceChildren(img);}
-    })());
-    if(data?.qr_path)tasks.push((async()=>{
-      const url=await signedImageUrl(data.qr_path);
-      if(url){const img=document.createElement('img');img.alt='フレンドコードQR';img.loading='lazy';img.decoding='async';img.fetchPriority='low';img.src=url;qrStage.replaceChildren(img);}
-    })());
-    await Promise.all(tasks);
+    const loadInto=async(stage,path,alt)=>{
+      if(!path)return;
+      // Original signed URLs are reliable on projects without image transformations.
+      // Avoid transformed signed URLs here: they can return a URL yet fail to load.
+      const url=await signedImageUrl(path);
+      if(!url)return;
+      const img=document.createElement('img');
+      img.alt=alt;img.loading='lazy';img.decoding='async';
+      img.addEventListener('load',()=>{if(stage.isConnected)stage.replaceChildren(img);},{once:true});
+      img.addEventListener('error',()=>{
+        // Retain the placeholder rather than displaying a broken-image icon.
+        console.warn('画像を読み込めませんでした:',alt);
+      },{once:true});
+      img.src=url;
+    };
+    await Promise.all([
+      loadInto(photoStage,data?.photo_path||data?.photo_url||data?.image_url,'コーデ写真'),
+      loadInto(qrStage,data?.qr_path||data?.qr_url,'フレンドコードQR')
+    ]);
   }
   function applyCardCharacterAccent(element,character){
     const color=character?.character_data?.sheet_color;
@@ -1230,7 +1281,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       chips.replaceChildren();
       const all=document.createElement('button');all.textContent='すべて';all.classList.toggle('active',activeCharacter==='all');
       all.addEventListener('click',()=>{activeCharacter='all';renderSharedCards();});chips.appendChild(all);
-      characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);const col=c.character_data?.sheet_color;if(activeCharacter===c.id&&/^#[0-9a-f]{6}$/i.test(col||'')){b.dataset.characterColor='1';b.style.backgroundColor=col+'33';b.style.borderColor=col;b.style.color=col;}b.addEventListener('click',()=>{activeCharacter=c.id;renderSharedCards();});chips.appendChild(b);});
+      characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);const col=c.character_data?.sheet_color;if(activeCharacter===c.id&&/^#[0-9a-f]{6}$/i.test(col||'')){b.dataset.characterColor='1';applyCardCharacterAccent(b,c);}b.addEventListener('click',()=>{activeCharacter=c.id;renderSharedCards();});chips.appendChild(b);});
     }
     const keyword=($('sharedCardSearch')?.value||'').trim().toLocaleLowerCase();
     const appearanceFilter=($('sharedAppearanceFilter')?.value||'').trim().toLocaleLowerCase();
