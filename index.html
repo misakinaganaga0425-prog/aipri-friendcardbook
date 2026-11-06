@@ -986,6 +986,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     }finally{if(toggle)toggle.disabled=false;}
   }
   function renderCharacterChips(){
+    applyCharacterTheme();
     const containers=[$('characterChips'),$('homeCharacterList')].filter(Boolean);
     containers.forEach((container,index)=>{
       container.replaceChildren();
