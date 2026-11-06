@@ -1183,7 +1183,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         const {error}=await client.from('cards').delete().eq('id',card.id).eq('user_id',currentUser.id);if(error)throw error;
         if(editingCardId===card.id)resetCardForm();message('cardRegisterStatus','フレカを削除しました。');scheduleCloudBackup();await loadCards();
       }));
-      actions.append(edit,profileEdit,del);item.append(info,details,actions);list.appendChild(item);
+      actions.append(edit,profileEdit,del);item.append(info,actions);list.appendChild(item);
     });
   }
   async function loadCards(){
