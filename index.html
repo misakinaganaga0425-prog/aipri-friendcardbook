@@ -972,14 +972,18 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(!path)return null;
     const value=String(path);
     if(/^https?:\/\//i.test(value))return value;
+    // 共有ページでもまず署名付きURLを試す。非公開Storageバケットでも、
+    // storage.objects の公開用SELECTポリシーがあれば画像を表示できる。
+    const signed=await signedImageUrl(value,transform);
+    if(signed)return signed;
     if(sharedMode&&client){
       try{
         const options=transform?{transform}:{};
         const {data}=client.storage.from(BUCKET).getPublicUrl(value,options);
         if(data?.publicUrl)return data.publicUrl;
-      }catch(error){console.warn('共有用の公開画像URLを取得できません。',error);}
+      }catch(error){console.warn('共有用の画像URLを取得できません。',error);}
     }
-    return signedImageUrl(value,transform);
+    return null;
   }
   function appendText(parent,tag,text,className){const el=document.createElement(tag);el.textContent=escapeText(text);if(className)el.className=className;parent.appendChild(el);return el;}
   async function renderCardMedia(photoStage,qrStage,data,sharedMode=false){
@@ -1393,12 +1397,27 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   }
   async function loadShare(){
     if(!client||!currentUser)return;
-    const {data,error}=await client.from('profiles').select('is_public,share_code,share_slug,display_name,theme_palette').eq('id',currentUser.id).maybeSingle();
-    if(error||!data){message('shareStatus','プロフィールを読み込めませんでした。');return;}
+    const {data,error}=await client.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
+    if(error||!data){message('shareStatus','プロフィールを読み込めませんでした：'+(error?.message||'データがありません'));return;}
     if(data.theme_palette)applyThemePalette(data.theme_palette);
-    const shortCode=data.share_code||data.share_slug;
-    $('publicToggle').checked=!!data.is_public;shareUrl=shortCode?location.origin+'/s/'+encodeURIComponent(shortCode):'';
-    $('shareUrl').value=data.is_public&&shareUrl?shareUrl:'現在は非公開です。';$('shareLinkArea').classList.toggle('hidden',!data.is_public||!shareUrl);
+    let shortCode=data.share_code||data.share_slug||'';
+    // 公開設定がONなのに共有コードが未発行の既存アカウントには、初回表示時に発行して保存。
+    if(data.is_public&&!shortCode){
+      const alphabet='abcdefghjkmnpqrstuvwxyz23456789';
+      const bytes=new Uint8Array(12);
+      if(window.crypto?.getRandomValues)window.crypto.getRandomValues(bytes);
+      else for(let i=0;i<bytes.length;i++)bytes[i]=Math.floor(Math.random()*256);
+      shortCode=Array.from(bytes,b=>alphabet[b%alphabet.length]).join('');
+      const {error:slugError}=await client.from('profiles').update({share_slug:shortCode}).eq('id',currentUser.id);
+      if(slugError){
+        shortCode='';
+        message('shareStatus','共有リンクを発行できませんでした：'+slugError.message+'（profilesテーブルのshare_slug列を確認してください）');
+      }
+    }
+    $('publicToggle').checked=!!data.is_public;
+    shareUrl=shortCode?location.origin+'/s/'+encodeURIComponent(shortCode):'';
+    $('shareUrl').value=data.is_public&&shareUrl?shareUrl:'現在は非公開です。';
+    $('shareLinkArea').classList.toggle('hidden',!data.is_public||!shareUrl);
   }
   async function savePublic(){
     if(!currentUser)return message('shareStatus','先にログインしてください。');
@@ -1531,7 +1550,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
 
 $('signupBtn')?.addEventListener('click',()=>runSafely(signUp));
   $('loginBtn')?.addEventListener('click',()=>runSafely(async()=>{await boot();await signIn();}));
-  $('addCard')?.addEventListener('click',()=>runSafely(addCard));
+  $('addCard')?.addEventListener('click',()=>runSafely(async()=>{await boot();await addCard();}));
   $('addChar')?.addEventListener('click',()=>runSafely(addCharacter));
   $('savePublic')?.addEventListener('click',()=>runSafely(savePublic));
   $('characterCatalogPublic')?.addEventListener('change',e=>runSafely(()=>saveCharacterCatalogVisibility(e.target.checked)));
