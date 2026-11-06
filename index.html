@@ -113,7 +113,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 /* Search results: two cards per row; display only the visual card fields. */
 #cardsList { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 .catalogueCard { gap:8px; padding:10px; border-radius:17px; }
-.catalogueCard .cardTitle { margin:0; padding:0 2px; font-size:clamp(12px,3.4vw,19px); line-height:1.3; }
+.catalogueCard .cardTitle { margin:0; padding:0 2px; font-size:clamp(12px,3.4vw,19px); line-height:1.3; min-height:2.6em; display:flex; align-items:center; justify-content:center; text-align:center; overflow-wrap:anywhere; }
 .catalogueCard .photoStage { width:100%; }
 .catalogueCard .photoStage img { width:100%; height:100%; max-height:none; object-fit:contain; padding:3px; border:2px solid white; }
 .catalogueCard .photoPlaceholder { width:100%; min-height:90px; padding:8px; font-size:11px; }
@@ -141,7 +141,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 /* Latest overrides: two-column catalogue, visual-only cards, collapsible search, and touch crop gestures. */
 #cardsList { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 .catalogueCard { gap:8px; padding:10px; border-radius:17px; }
-.catalogueCard .cardTitle { margin:0; padding:0 2px; font-size:clamp(12px,3.4vw,19px); line-height:1.3; }
+.catalogueCard .cardTitle { margin:0; padding:0 2px; font-size:clamp(12px,3.4vw,19px); line-height:1.3; min-height:2.6em; display:flex; align-items:center; justify-content:center; text-align:center; overflow-wrap:anywhere; }
 .catalogueCard .photoStage { width:100%; }
 .catalogueCard .photoStage img { width:100%; height:100%; max-height:none; object-fit:contain; padding:3px; border:2px solid white; }
 .catalogueCard .photoPlaceholder { width:100%; min-height:90px; padding:8px; font-size:11px; }
@@ -918,7 +918,8 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const sel=$('cardAppearance');if(!sel)return;const prev=sel.value,character=characters.find(c=>c.id===$('cardCharacter')?.value);
     sel.replaceChildren();const blank=document.createElement('option');blank.value='';blank.textContent='スタイルを選択（任意）';sel.appendChild(blank);
     const d=character?.character_data||{},types=Array.isArray(d.appearance_types)?d.appearance_types:[];
-    types.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o);});
+    const availableTypes=['いつもの',...types.filter(t=>String(t||'').trim()&&t!=='いつもの')];
+    availableTypes.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o);});
     sel.value=types.includes(prev)?prev:'';
   }
   function updateManageFilterOptions(){
@@ -1065,6 +1066,18 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     return null;
   }
   function appendText(parent,tag,text,className){const el=document.createElement(tag);el.textContent=escapeText(text);if(className)el.className=className;parent.appendChild(el);return el;}
+  function fitCatalogueTitle(title){
+    if(!title)return;
+    requestAnimationFrame(()=>{
+      const base=parseFloat(getComputedStyle(title).fontSize)||16;
+      const min=10;
+      title.style.fontSize=base+'px';
+      let size=base;
+      const lineHeight=parseFloat(getComputedStyle(title).lineHeight)||size*1.3;
+      const maxHeight=lineHeight*2+1;
+      while(title.scrollHeight>maxHeight && size>min){size=Math.max(min,size-0.5);title.style.fontSize=size+'px';}
+    });
+  }
   async function renderCardMedia(photoStage,qrStage,data,sharedMode=false){
     const landscape=data?.photo_orientation==='landscape';
     photoStage.style.aspectRatio=landscape?'3 / 2':'988 / 1536';
@@ -1122,7 +1135,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const seriesFilter=$('seriesFilter')?.value||'';
     const filtered=cards.filter(card=>{
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),characterName=character?.character_name||'';
-      const fields=[card.card_name,d.color,d.appearance,d.series,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
+      const fields=[card.card_name,d.color,d.appearance||( 'スタイル未設定' ),d.series,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
       const matchesKeyword=!keyword||fields.some(x=>x.includes(keyword));
       const matchesAppearance=!appearanceFilter||String(d.appearance||'').toLocaleLowerCase().includes(appearanceFilter);
       const matchesSeries=!seriesFilter||String(d.series||'')===seriesFilter;
@@ -1132,12 +1145,13 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(!filtered.length){appendText(list,'p',cards.length?'条件に合うフレカがありません。':'フレカはまだ登録されていません。','muted');return;}
     filtered.forEach(card=>{
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),item=document.createElement('article');item.className='catalogueCard';applyCardCharacterAccent(item,character);
-      appendText(item,'h3',card.card_name,'cardTitle');
+      const cardTitle=appendText(item,'h3',card.card_name,'cardTitle');
       const photoStage=document.createElement('div');photoStage.className='photoStage';const photoPlaceholder=document.createElement('div');photoPlaceholder.className='photoPlaceholder';photoPlaceholder.textContent='コーデ写真';photoStage.appendChild(photoPlaceholder);item.appendChild(photoStage);
       const bottom=document.createElement('div');bottom.className='cardBottom';const qrStage=document.createElement('div');qrStage.className='qrStage';
       const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qrStage.appendChild(qrPlaceholder);bottom.appendChild(qrStage);
-      const details=document.createElement('div');details.className='cardDetails';appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');appendText(details,'div',(d.appearance||'スタイル未設定')+' ver.','appearanceName');bottom.appendChild(details);item.appendChild(bottom);
+      const details=document.createElement('div');details.className='cardDetails';appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');if(String(d.appearance||'').trim())appendText(details,'div',String(d.appearance).trim()+' ver.','appearanceName');bottom.appendChild(details);item.appendChild(bottom);
       const visibility=document.createElement('label');visibility.className='switchrow cardVisibilityToggle';const check=document.createElement('input');check.type='checkbox';check.checked=card.is_public!==false;check.addEventListener('change',()=>setCardVisibility(card,check.checked,check));visibility.append(check,document.createTextNode('共有ページに公開'));item.appendChild(visibility);list.appendChild(item);
+      fitCatalogueTitle(cardTitle);
       renderCardMedia(photoStage,qrStage,d).catch(console.error);
     });
   }
@@ -1158,7 +1172,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const keyword=($('manageCardSearch')?.value||'').trim().toLocaleLowerCase(),appearance=($('manageCardAppearanceFilter')?.value||'').trim().toLocaleLowerCase(),series=$('manageCardSeriesFilter')?.value||'',characterId=$('manageCardCharacterFilter')?.value||'';
     const filtered=cards.filter(card=>{
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),characterName=character?.character_name||'';
-      const fields=[card.card_name,d.color,d.appearance,d.series,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
+      const fields=[card.card_name,d.color,d.appearance||( 'スタイル未設定' ),d.series,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
       return (!keyword||fields.some(x=>x.includes(keyword)))&&(!appearance||String(d.appearance||'').toLocaleLowerCase().includes(appearance))&&(!series||String(d.series||'')===series)&&(!characterId||card.character_id===characterId);
     });
     const count=$('manageCardCount');if(count)count.textContent=filtered.length+' / '+cards.length+' 枚';
@@ -1317,6 +1331,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const addType=document.createElement('button');addType.type='button';addType.className='secondary';addType.textContent='＋ スタイルを追加';
     const typesList=document.createElement('div');typesList.style.cssText='display:grid;gap:10px';
     const types=Array.isArray(data.appearance_types)?[...data.appearance_types]:((data.appearance_type||data.appearance)?[data.appearance_type||data.appearance]:[]);
+    if(!types.includes('いつもの'))types.unshift('いつもの');
     const photos=Array.isArray(data.appearance_photos)?[...data.appearance_photos]:[];
     const drawTypes=()=>{
       typesList.replaceChildren();
@@ -1326,7 +1341,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         const file=document.createElement('input');file.type='file';file.accept='image/jpeg,image/png,image/webp';file.setAttribute('aria-label',type+'のマイキャラフォト');row.appendChild(file);
         const old=photos.find(x=>x.name===type);
         if(old?.path){const note=document.createElement('small');note.textContent='登録済みの写真あり（新しい写真を選ぶと差し替え）';note.className='hint';row.appendChild(note);}
-        const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='このスタイルを削除';remove.addEventListener('click',()=>{types.splice(index,1);drawTypes();});row.appendChild(remove);
+        const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent=type==='いつもの'?'標準スタイル（削除できません）':'このスタイルを削除';remove.disabled=type==='いつもの';if(type!=='いつもの')remove.addEventListener('click',()=>{types.splice(index,1);drawTypes();});row.appendChild(remove);
         row.dataset.appearance=type;row.dataset.fileInput='true';row._file=file;typesList.appendChild(row);
       });
     };
@@ -1399,7 +1414,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const seriesFilter=$('sharedSeriesFilter')?.value||'';
     const visible=cards.filter(card=>{
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),characterName=character?.character_name||'';
-      const fields=[card.card_name,d.color,d.appearance,d.series,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
+      const fields=[card.card_name,d.color,d.appearance||( 'スタイル未設定' ),d.series,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
       return (!keyword||fields.some(x=>x.includes(keyword)))
         &&(!appearanceFilter||String(d.appearance||'').toLocaleLowerCase().includes(appearanceFilter))
         &&(!seriesFilter||String(d.series||'')===seriesFilter)
@@ -1410,16 +1425,17 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     for(const card of visible){
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id);
       const item=document.createElement('article');item.className='catalogueCard';applyCardCharacterAccent(item,character);
-      appendText(item,'h3',card.card_name,'cardTitle');
+      const cardTitle=appendText(item,'h3',card.card_name,'cardTitle');
       const photo=document.createElement('div');photo.className='photoStage';
       const placeholder=document.createElement('div');placeholder.className='photoPlaceholder';placeholder.textContent='コーデ写真';photo.appendChild(placeholder);item.appendChild(photo);
       const bottom=document.createElement('div');bottom.className='cardBottom';
       const qr=document.createElement('div');qr.className='qrStage';const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qr.appendChild(qrPlaceholder);bottom.appendChild(qr);
       const details=document.createElement('div');details.className='cardDetails';
       appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');
-      appendText(details,'div',(d.appearance||'スタイル未設定')+' ver.','appearanceName');
+      if(String(d.appearance||'').trim())appendText(details,'div',String(d.appearance).trim()+' ver.','appearanceName');
       if(d.series)appendText(details,'div',d.series,'muted');
       bottom.appendChild(details);item.appendChild(bottom);list.appendChild(item);
+      fitCatalogueTitle(cardTitle);
       await renderCardMedia(photo,qr,d,true);
     }
   }
