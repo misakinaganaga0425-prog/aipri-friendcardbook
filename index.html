@@ -989,31 +989,41 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   async function renderCardMedia(photoStage,qrStage,data,sharedMode=false){
     const landscape=data?.photo_orientation==='landscape';
     photoStage.style.aspectRatio=landscape?'3 / 2':'988 / 1536';
-    const loadInto=async(stage,path,alt)=>{
+    const loadInto=async(stage,path,alt,transform=null)=>{
       if(!path)return;
-      // Original signed URLs are reliable on projects without image transformations.
-      // Avoid transformed signed URLs here: they can return a URL yet fail to load.
-      const url=await imageUrlForView(path,sharedMode);
+      const placeholder=stage.firstElementChild;
+      let url=await imageUrlForView(path,sharedMode,transform);
       if(!url)return;
       const img=document.createElement('img');
-      img.alt=alt;img.loading='lazy';img.decoding='async';
-      img.addEventListener('load',()=>{if(stage.isConnected)stage.replaceChildren(img);},{once:true});
+      img.alt=alt;
+      img.loading='lazy';
+      img.decoding='async';
+      img.fetchPriority='low';
+      let retried=false;
       img.addEventListener('error',async()=>{
-        // A signed URL can be returned successfully yet fail when the bucket is public-only.
-        // Retry once with the bucket's public URL before leaving the placeholder visible.
-        try{
-          const publicUrl=client?.storage?.from(BUCKET)?.getPublicUrl(String(path)).data?.publicUrl;
-          if(publicUrl&&publicUrl!==img.src&&!img.dataset.publicRetry){img.dataset.publicRetry='1';img.src=publicUrl;return;}
-        }catch(retryError){console.warn('公開画像URLへの再試行に失敗しました',retryError);}
-        console.warn('画像を読み込めませんでした:',alt,'path:',path);
-      });
+        // If an optimized URL is rejected by Storage, retry the original image URL.
+        if(!retried){
+          retried=true;
+          try{
+            const fallback=await imageUrlForView(path,sharedMode,null);
+            if(fallback&&fallback!==img.src){img.src=fallback;return;}
+          }catch(error){console.warn('元画像URLへの切り替えに失敗しました。',error);}
+        }
+        console.warn('画像を読み込めませんでした:',alt,path);
+        if(placeholder&&stage.isConnected)stage.replaceChildren(placeholder);
+      },{once:false});
+      // Insert before loading so Safari does not miss a fast load event and leave
+      // the placeholder visible. The image itself is replaced by the fallback on error.
+      stage.replaceChildren(img);
       img.src=url;
     };
+    const photoTransform={width:landscape?1200:900,height:landscape?800:1400,quality:76,resize:'contain'};
     await Promise.all([
-      loadInto(photoStage,data?.photo_path||data?.photo_url||data?.image_url,'コーデ写真'),
-      loadInto(qrStage,data?.qr_path||data?.qr_url,'フレンドコードQR')
+      loadInto(photoStage,data?.photo_path||data?.photo_url||data?.image_url,'コーデ写真',photoTransform),
+      loadInto(qrStage,data?.qr_path||data?.qr_url,'フレンドコードQR',null)
     ]);
   }
+
   function applyCardCharacterAccent(element,character){
     const color=character?.character_data?.sheet_color;
     const hex=/^#[0-9a-f]{6}$/i.test(color||'')?color:'#8bd7f3';
@@ -1094,7 +1104,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         const {error}=await client.from('cards').delete().eq('id',card.id).eq('user_id',currentUser.id);if(error)throw error;
         if(editingCardId===card.id)resetCardForm();message('cardRegisterStatus','フレカを削除しました。');scheduleCloudBackup();await loadCards();
       }));
-      actions.append(edit,profileEdit,del);info.appendChild(actions);item.appendChild(info);list.appendChild(item);
+      actions.append(edit,profileEdit,del);item.append(info,details,actions);list.appendChild(item);
     });
   }
   async function loadCards(){
@@ -1555,7 +1565,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
 
 $('signupBtn')?.addEventListener('click',()=>runSafely(signUp));
   $('loginBtn')?.addEventListener('click',()=>runSafely(async()=>{await boot();await signIn();}));
-  $('addCard')?.addEventListener('click',()=>runSafely(async()=>{await boot();await addCard();}));
+  $('addCard')?.addEventListener('click',()=>runSafely(addCard));
   $('addChar')?.addEventListener('click',()=>runSafely(addCharacter));
   $('savePublic')?.addEventListener('click',()=>runSafely(savePublic));
   $('characterCatalogPublic')?.addEventListener('change',e=>runSafely(()=>saveCharacterCatalogVisibility(e.target.checked)));
