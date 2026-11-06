@@ -98,7 +98,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 .catalogueCard .photoPlaceholder { width:min(100%,360px); min-height:150px; display:grid; place-items:center; border:2px dashed #9db8e9; border-radius:16px; color:#7189b4; background:rgba(255,255,255,.55); text-align:center; padding:20px; }
 .catalogueCard .cardBottom { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; align-items:center; }
 .catalogueCard .qrStage { min-width:0; display:flex; justify-content:center; }
-.catalogueCard .qrStage img { width:100%; max-width:190px; max-height:220px; object-fit:contain; background:white; padding:5px; }
+.catalogueCard .qrStage { width:100%; aspect-ratio:1/1; min-width:0; overflow:hidden; display:grid; place-items:center; background:#fff; } .catalogueCard .qrStage img { display:block; width:100%; height:100%; max-width:none; max-height:none; aspect-ratio:1/1; object-fit:contain; background:white; padding:4px; }
 .catalogueCard .cardDetails { min-width:0; text-align:center; }
 .catalogueCard .characterName { display:block; padding:10px 8px; border-radius:12px; background:#7898d6; color:#fff; font-size:clamp(18px,5vw,26px); font-weight:900; overflow-wrap:anywhere; }
 .catalogueCard .appearanceName { margin-top:10px; color:#687b9c; font-weight:900; font-size:18px; overflow-wrap:anywhere; }
@@ -522,6 +522,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   const validUsername = name => /^[a-zA-Z0-9_]{3,20}$/.test(name);
   const escapeText = value => String(value ?? '');
   const PALETTE_KEY = 'aipri_theme_palette';
+  const PALETTE_USER_SET_KEY = 'aipri_theme_palette_user_set';
   const PRESET_PALETTES = ['sky','pink','white','lavender','yellow','green'];
   // Keep one canonical ordering rule for the owner's catalogue and every shared view.
   function sortCharactersByDisplayOrder(rows){
@@ -578,6 +579,8 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     // applyThemePalette writes to localStorage immediately, so the choice survives reloads
     // even while the cloud save is pending. The profile copy keeps shared pages in sync.
     applyThemePalette(palette);
+    // Mark this as an intentional user choice, distinct from the default sky theme.
+    localStorage.setItem(PALETTE_USER_SET_KEY,'1');
     if(!currentUser||!client)return;
     clearTimeout(themeSaveTimer);
     if(immediate){runSafely(()=>saveThemePaletteToProfile(palette));return;}
@@ -755,6 +758,45 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(cropPointers.size===1)startCropGesture();else if(cropPointers.size>=2)startCropGesture();else cropGesture=null;
   }
   cropCanvas.addEventListener('pointerup',endCropPointer);cropCanvas.addEventListener('pointercancel',endCropPointer);cropCanvas.addEventListener('lostpointercapture',endCropPointer);
+  let jsQrLoadPromise=null;
+  async function loadJsQr(){
+    if(window.jsQR)return window.jsQR;
+    if(!jsQrLoadPromise){
+      jsQrLoadPromise=new Promise((resolve,reject)=>{
+        const script=document.createElement('script');
+        script.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+        script.onload=()=>window.jsQR?resolve(window.jsQR):reject(new Error('QR検出ライブラリを利用できません。'));
+        script.onerror=()=>reject(new Error('QR検出ライブラリを読み込めませんでした。'));
+        document.head.appendChild(script);
+      });
+    }
+    return jsQrLoadPromise;
+  }
+  async function autoCropQrFile(file){
+    const jsQR=await loadJsQr();
+    const sourceUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(file);});
+    const img=await new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=sourceUrl;});
+    const maxSide=1600,scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
+    const scan=document.createElement('canvas');scan.width=Math.max(1,Math.round(img.naturalWidth*scale));scan.height=Math.max(1,Math.round(img.naturalHeight*scale));
+    const scanCtx=scan.getContext('2d',{willReadFrequently:true});scanCtx.drawImage(img,0,0,scan.width,scan.height);
+    const pixels=scanCtx.getImageData(0,0,scan.width,scan.height);
+    const result=jsQR(pixels.data,pixels.width,pixels.height,{inversionAttempts:'attemptBoth'});
+    if(!result?.location)return null;
+    const points=[result.location.topLeftCorner,result.location.topRightCorner,result.location.bottomLeftCorner,result.location.bottomRightCorner];
+    const xs=points.map(p=>p.x/scale),ys=points.map(p=>p.y/scale);
+    const left=Math.min(...xs),right=Math.max(...xs),top=Math.min(...ys),bottom=Math.max(...ys);
+    const qrW=right-left,qrH=bottom-top;
+    // Add a quiet-zone margin around the detected QR, then make a square crop.
+    const side=Math.min(Math.max(qrW,qrH)*1.22,Math.max(img.naturalWidth,img.naturalHeight));
+    const cx=(left+right)/2,cy=(top+bottom)/2;
+    const out=document.createElement('canvas');out.width=1200;out.height=1200;
+    const ctx=out.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,1200,1200);
+    const sx=cx-side/2,sy=cy-side/2;
+    ctx.drawImage(img,sx,sy,side,side,0,0,1200,1200);
+    const blob=await new Promise(resolve=>out.toBlob(resolve,'image/png'));
+    if(!blob)return null;
+    return new File([blob],(file.name.replace(/\.[^.]+$/,'')||'qr')+'-auto-cropped.png',{type:'image/png',lastModified:Date.now()});
+  }
   function openCropper(file,input){
     const reader=new FileReader();
     reader.onload=()=>{
@@ -775,9 +817,27 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     };
     reader.readAsDataURL(file);
   }
-  ['cardPhoto','cardQr'].forEach(id=>$(id).addEventListener('change',e=>{
+  ['cardPhoto','cardQr'].forEach(id=>$(id).addEventListener('change',async e=>{
     const file=e.target.files?.[0];
-    if(file){if(validImage(file,id==='cardQr'?'QRコード画像':'写真'))openCropper(file,e.target);else e.target.value='';}
+    if(!file)return;
+    if(!validImage(file,id==='cardQr'?'QRコード画像':'写真')){e.target.value='';return;}
+    if(id==='cardQr'){
+      message('cardRegisterStatus','QRコードを検知しています…');
+      try{
+        const cropped=await autoCropQrFile(file);
+        if(cropped){
+          const transfer=new DataTransfer();transfer.items.add(cropped);e.target.files=transfer.files;
+          message('cardRegisterStatus','QRコードを自動検知して切り抜いたよ。必要なら位置を微調整してね。');
+          openCropper(cropped,e.target);
+          return;
+        }
+        message('cardRegisterStatus','QRコードを検知できなかったため、手動で切り抜いてね。');
+      }catch(error){
+        console.warn('QRコードの自動切り抜きに失敗しました。',error);
+        message('cardRegisterStatus','自動検知できなかったため、手動で切り抜いてね。');
+      }
+    }
+    openCropper(file,e.target);
   }));
   $('cancelCrop').addEventListener('click',()=>{if(cropState)cropState.input.value='';cropState=null;cropPointers.clear();cropGesture=null;$('cropModal').classList.add('hidden');});
   $('applyCrop').addEventListener('click',()=>{
@@ -1423,7 +1483,17 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(!client||!currentUser)return;
     const {data,error}=await client.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
     if(error||!data){message('shareStatus','プロフィールを読み込めませんでした：'+(error?.message||'データがありません'));return;}
-    if(data.theme_palette)applyThemePalette(data.theme_palette);
+    const localPalette=localStorage.getItem(PALETTE_KEY);
+    const hasIntentionalLocalPalette=localStorage.getItem(PALETTE_USER_SET_KEY)==='1' || (!!localPalette && localPalette!=='sky');
+    if(hasIntentionalLocalPalette && localPalette){
+      // On this device, keep the user's explicitly selected theme after re-login.
+      applyThemePalette(localPalette);
+      if(localPalette!==(data.theme_palette||'sky')){
+        try{await saveThemePaletteToProfile(localPalette);}catch(error){console.warn('テーマカラーのクラウド同期に失敗しました。',error);}
+      }
+    }else if(data.theme_palette){
+      applyThemePalette(data.theme_palette);
+    }
     let shortCode=data.share_code||data.share_slug||'';
     // 公開設定がONなのに共有コードが未発行の既存アカウントには、初回表示時に発行して保存。
     if(data.is_public&&!shortCode){
