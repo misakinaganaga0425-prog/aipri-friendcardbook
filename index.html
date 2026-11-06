@@ -202,6 +202,17 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
 .photoOrientationField label{display:flex;align-items:center;gap:7px;margin:0;font-weight:700}
 .photoOrientationField input[type=radio]{width:18px;height:18px;accent-color:var(--theme-accent)}
 .photoOrientationField .hint{flex-basis:100%}
+
+/* Friend-card catalogue accents are scoped per character; app chrome stays on the app theme. */
+.catalogueCard{
+  border-color:var(--character-accent,var(--line))!important;
+  background:linear-gradient(155deg,#fff 0%,var(--character-accent-soft,#fff) 100%)!important;
+}
+.catalogueCard .cardTitle,
+.catalogueCard .characterName{color:var(--character-accent-dark,var(--ink))!important}
+.catalogueCard .photoStage,
+.catalogueCard .qrStage{border-color:var(--character-accent,var(--line))!important}
+.characterChips button[data-character-color]{border-color:var(--character-accent,var(--line));color:var(--character-accent-dark,var(--ink))}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -854,7 +865,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       if(!currentUser){const p=document.createElement('p');p.className='muted';p.textContent='ログインするとマイキャラが表示されます。';container.appendChild(p);return;}
       if(index===0){
         const all=document.createElement('button');all.textContent='全マイキャラ';all.classList.toggle('active',activeCharacter==='all');all.addEventListener('click',()=>{activeCharacter='all';renderCharacterChips();renderCards();});container.appendChild(all);
-        characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);b.addEventListener('click',()=>{activeCharacter=c.id;renderCharacterChips();renderCards();});container.appendChild(b);});
+        characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);if(activeCharacter===c.id){const col=c.character_data?.sheet_color;if(/^#[0-9a-f]{6}$/i.test(col||'')){b.dataset.characterColor='1';b.style.backgroundColor=col+'33';b.style.borderColor=col;b.style.color=col;}}b.addEventListener('click',()=>{activeCharacter=c.id;renderCharacterChips();renderCards();});container.appendChild(b);});
       }else{
         if(!characters.length){const p=document.createElement('p');p.className='muted';p.textContent='マイキャラはまだ登録されていません。';container.appendChild(p);}
         else{
@@ -926,6 +937,17 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     })());
     await Promise.all(tasks);
   }
+  function applyCardCharacterAccent(element,character){
+    const color=character?.character_data?.sheet_color;
+    const hex=/^#[0-9a-f]{6}$/i.test(color||'')?color:'#8bd7f3';
+    const rgb=hex.slice(1).match(/.{2}/g).map(v=>parseInt(v,16));
+    const mix=(v,t,a)=>Math.round(v*(1-a)+t*a).toString(16).padStart(2,'0');
+    const tint=(a)=>'#'+rgb.map(v=>mix(v,255,a)).join('');
+    const shade=(a)=>'#'+rgb.map((v,i)=>mix(v,[35,55,70][i],a)).join('');
+    element.style.setProperty('--character-accent',hex);
+    element.style.setProperty('--character-accent-soft',tint(.94));
+    element.style.setProperty('--character-accent-dark',shade(.68));
+  }
   function renderCards(){
     const list=$('cardsList');if(!list)return;list.replaceChildren();const count=$('searchResultCount');
     if(!currentUser){if(count)count.textContent='— 枚';appendText(list,'p','ログインするとフレカを表示できます。','muted');return;}
@@ -943,7 +965,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(count)count.textContent=filtered.length+' 枚';
     if(!filtered.length){appendText(list,'p',cards.length?'条件に合うフレカがありません。':'フレカはまだ登録されていません。','muted');return;}
     filtered.forEach(card=>{
-      const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),item=document.createElement('article');item.className='catalogueCard';
+      const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),item=document.createElement('article');item.className='catalogueCard';applyCardCharacterAccent(item,character);
       appendText(item,'h3',card.card_name,'cardTitle');
       const photoStage=document.createElement('div');photoStage.className='photoStage';const photoPlaceholder=document.createElement('div');photoPlaceholder.className='photoPlaceholder';photoPlaceholder.textContent='コーデ写真';photoStage.appendChild(photoPlaceholder);item.appendChild(photoStage);
       const bottom=document.createElement('div');bottom.className='cardBottom';const qrStage=document.createElement('div');qrStage.className='qrStage';
@@ -1208,7 +1230,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       chips.replaceChildren();
       const all=document.createElement('button');all.textContent='すべて';all.classList.toggle('active',activeCharacter==='all');
       all.addEventListener('click',()=>{activeCharacter='all';renderSharedCards();});chips.appendChild(all);
-      characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);b.addEventListener('click',()=>{activeCharacter=c.id;renderSharedCards();});chips.appendChild(b);});
+      characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);const col=c.character_data?.sheet_color;if(activeCharacter===c.id&&/^#[0-9a-f]{6}$/i.test(col||'')){b.dataset.characterColor='1';b.style.backgroundColor=col+'33';b.style.borderColor=col;b.style.color=col;}b.addEventListener('click',()=>{activeCharacter=c.id;renderSharedCards();});chips.appendChild(b);});
     }
     const keyword=($('sharedCardSearch')?.value||'').trim().toLocaleLowerCase();
     const appearanceFilter=($('sharedAppearanceFilter')?.value||'').trim().toLocaleLowerCase();
@@ -1225,7 +1247,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(!visible.length){appendText(list,'p',cards.length?'条件に合うフレカがありません。':'公開されているフレカはありません。','muted');return;}
     for(const card of visible){
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id);
-      const item=document.createElement('article');item.className='catalogueCard';
+      const item=document.createElement('article');item.className='catalogueCard';applyCardCharacterAccent(item,character);
       appendText(item,'h3',card.card_name,'cardTitle');
       const photo=document.createElement('div');photo.className='photoStage';
       const placeholder=document.createElement('div');placeholder.className='photoPlaceholder';placeholder.textContent='コーデ写真';photo.appendChild(placeholder);item.appendChild(photo);
@@ -1267,7 +1289,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     }
     if(profileError)throw new Error('公開プロフィールを取得できません：'+profileError.message);
     if(!profile)throw new Error('この図鑑は非公開、または共有リンクが無効です。');
-    applyThemePalette(localStorage.getItem(PALETTE_KEY)||profile.theme_palette||'sky');
+    applyThemePalette(profile.theme_palette||'sky');
     $('shareOwnerName').textContent=profile.display_name ? profile.display_name+' さんのフレカ図鑑' : 'フレカ図鑑';
     const [cardResult,charResult]=await Promise.all([
       client.from('cards').select('id,card_name,card_data,character_id,is_public,created_at').eq('user_id',profile.id).eq('is_public',true).order('created_at',{ascending:false}),
