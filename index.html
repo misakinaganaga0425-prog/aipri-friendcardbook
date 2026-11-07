@@ -245,6 +245,30 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
 .sharedTabPanel{min-width:0}
 #sharedCharacterSheets{display:grid;gap:18px}
 #sharedCharacterSheets>.panel{margin:0!important}
+/* Align My Character name centrally and reserve equal title height for 1- or 2-line outfit names. */
+.catalogueCard .cardTitle,
+#sharedCardsList .catalogueCard .cardTitle {
+  display:flex !important;
+  align-items:center;
+  justify-content:center;
+  text-align:center !important;
+  min-height:2.7em;
+  box-sizing:border-box;
+  line-height:1.3 !important;
+}
+.catalogueCard .characterName,
+#sharedCardsList .catalogueCard .characterName {
+  display:flex !important;
+  align-items:center;
+  justify-content:center;
+  text-align:center !important;
+  width:100%;
+  min-height:42px;
+  box-sizing:border-box;
+  line-height:1.25 !important;
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
 </style>
 </head>
 <body>
