@@ -1612,6 +1612,10 @@ $('signupBtn')?.addEventListener('click',()=>runSafely(signUp));
   $('appearanceFilter')?.addEventListener('input',renderCards);
   $('cardCharacter')?.addEventListener('change',updateCardAppearanceOptions);
   $('seriesFilter')?.addEventListener('change',renderCards);
+  // Always start both catalogue views in My Character order on a fresh app load.
+  // User can still choose another order manually during the session.
+  if($('cardSort')) $('cardSort').value='character';
+  if($('sharedCardSort')) $('sharedCardSort').value='character';
   $('cardSort')?.addEventListener('change',renderCards);
   $('sharedCardSort')?.addEventListener('change',renderSharedCards);
   ['sharedCardSearch','sharedAppearanceFilter'].forEach(id=>$(id)?.addEventListener('input',renderSharedCards));
