@@ -826,6 +826,21 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     // Never mutate :root, so the app navigation keeps the user's home palette.
     return characters.find(x=>x.id===characterId)?.character_data?.sheet_color||null;
   }
+  function applyCardCharacterTheme(item,photoStage,qrStage,title,nameEl,character){
+    // Use the assigned My Character's own image color for its card frame and labels.
+    // Fall back to the app's default blue only when no character color is available.
+    const raw=character?.character_data?.sheet_color||'#8bd7f3';
+    const color=/^#[0-9a-f]{6}$/i.test(raw)?raw:'#8bd7f3';
+    const rgb=color.match(/[0-9a-f]{2}/gi).map(v=>parseInt(v,16));
+    const darkColor='#'+rgb.map(v=>Math.max(25,Math.round(v*.48)).toString(16).padStart(2,'0')).join('');
+    item.style.borderColor=color+'99';
+    item.style.background='linear-gradient(145deg,#fff,'+color+'18)';
+    item.style.boxShadow='0 5px 18px '+color+'20';
+    if(title)title.style.color=darkColor;
+    if(photoStage){photoStage.style.border='2px solid '+color+'88';photoStage.style.background=color+'12';}
+    if(qrStage){qrStage.style.border='1px solid '+color+'88';}
+    if(nameEl){nameEl.style.cssText='display:block;padding:10px 8px;border-radius:12px;background:'+color+';color:#fff;font-size:clamp(18px,5vw,26px);font-weight:900;overflow-wrap:anywhere;text-align:center';}
+  }
   async function saveCharacterCatalogVisibility(visible){
     const toggle=$('characterCatalogPublic'),status=$('characterCatalogStatus');
     if(!currentUser||!client){if(toggle)toggle.checked=false;if(status)status.textContent='ログインしてから設定してください。';return;}
@@ -965,11 +980,12 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(!filtered.length){appendText(list,'p',cards.length?'条件に合うフレカがありません。':'フレカはまだ登録されていません。','muted');return;}
     filtered.forEach(card=>{
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),item=document.createElement('article');item.className='catalogueCard';
-      appendText(item,'h3',card.card_name,'cardTitle');
+      const title=appendText(item,'h3',card.card_name,'cardTitle');
       const photoStage=document.createElement('div');photoStage.className='photoStage';const photoPlaceholder=document.createElement('div');photoPlaceholder.className='photoPlaceholder';photoPlaceholder.textContent='コーデ写真';photoStage.appendChild(photoPlaceholder);item.appendChild(photoStage);
       const bottom=document.createElement('div');bottom.className='cardBottom';const qrStage=document.createElement('div');qrStage.className='qrStage';
       const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qrStage.appendChild(qrPlaceholder);bottom.appendChild(qrStage);
-      const details=document.createElement('div');details.className='cardDetails';appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');appendText(details,'div',(d.appearance||'スタイル未設定')+' ver.','appearanceName');bottom.appendChild(details);item.appendChild(bottom);
+      const details=document.createElement('div');details.className='cardDetails';const characterLabel=appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');appendText(details,'div',(d.appearance||'スタイル未設定')+' ver.','appearanceName');bottom.appendChild(details);item.appendChild(bottom);
+      applyCardCharacterTheme(item,photoStage,qrStage,title,characterLabel,character);
       const visibility=document.createElement('label');visibility.className='switchrow cardVisibilityToggle';const check=document.createElement('input');check.type='checkbox';check.checked=card.is_public!==false;check.addEventListener('change',()=>setCardVisibility(card,check.checked,check));visibility.append(check,document.createTextNode('共有ページに公開'));item.appendChild(visibility);list.appendChild(item);
       renderCardMedia(photoStage,qrStage,d).catch(console.error);
     });
@@ -1247,16 +1263,17 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     for(const card of visible){
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id);
       const item=document.createElement('article');item.className='catalogueCard';
-      appendText(item,'h3',card.card_name,'cardTitle');
+      const title=appendText(item,'h3',card.card_name,'cardTitle');
       const photo=document.createElement('div');photo.className='photoStage';
       const placeholder=document.createElement('div');placeholder.className='photoPlaceholder';placeholder.textContent='コーデ写真';photo.appendChild(placeholder);item.appendChild(photo);
       const bottom=document.createElement('div');bottom.className='cardBottom';
       const qr=document.createElement('div');qr.className='qrStage';const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qr.appendChild(qrPlaceholder);bottom.appendChild(qr);
       const details=document.createElement('div');details.className='cardDetails';
-      appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');
+      const characterLabel=appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');
       appendText(details,'div',(d.appearance||'スタイル未設定')+' ver.','appearanceName');
       if(d.series)appendText(details,'div',d.series,'muted');
       bottom.appendChild(details);item.appendChild(bottom);list.appendChild(item);
+      applyCardCharacterTheme(item,photo,qr,title,characterLabel,character);
       await renderCardMedia(photo,qr,d);
     }
   }
