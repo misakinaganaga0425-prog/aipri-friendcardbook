@@ -933,6 +933,8 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   function appendText(parent,tag,text,className){const el=document.createElement(tag);el.textContent=escapeText(text);if(className)el.className=className;parent.appendChild(el);return el;}
   async function renderCardMedia(photoStage,qrStage,data){
     // Photo frame is fixed at 3:4 for both portrait and landscape images.
+    // Keep the original orientation metadata only for choosing the storage thumbnail dimensions.
+    const landscape=data?.photo_orientation==='landscape';
     const tasks=[];
     if(data?.photo_path)tasks.push((async()=>{
       const transform={width:landscape?1200:900,height:landscape?800:1400,quality:76,resize:'contain'};
