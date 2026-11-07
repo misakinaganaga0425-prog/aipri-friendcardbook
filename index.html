@@ -320,12 +320,60 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
 }
 
 </style>
-</head>
+
+<style>
+/* User settings: all colors inherit the active app palette. */
+.siteHeader{gap:10px}
+.userSettingsTrigger{flex:0 0 42px;width:42px;height:42px;border:1px solid var(--line);border-radius:14px;background:var(--theme-panel,var(--soft));color:var(--deep);font-size:21px;display:grid;place-items:center;box-shadow:0 2px 8px rgba(40,90,120,.08)}
+.userSettingsBackdrop{position:fixed;inset:0;z-index:1000;background:rgba(20,35,48,.42);display:flex;align-items:flex-end;justify-content:center;padding:14px}
+.userSettingsBackdrop.hidden{display:none!important}
+.userSettingsSheet{width:min(100%,560px);max-height:min(82dvh,760px);overflow:auto;background:var(--theme-bg,var(--soft));color:var(--ink);border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:0 16px 50px rgba(20,45,65,.24);padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+.userSettingsTop{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.userSettingsTop h2{margin:0;color:var(--deep)}
+.userSettingsClose{width:38px;height:38px;border:1px solid var(--line);border-radius:50%;background:var(--theme-panel,var(--soft));color:var(--deep);font-size:25px;line-height:1}
+.userSettingsMenu{display:grid;gap:8px}
+.userSettingsMenu button{width:100%;min-height:50px;display:flex;align-items:center;justify-content:space-between;text-align:left;padding:12px 15px;border:1px solid var(--line);border-radius:15px;background:var(--theme-panel,var(--soft));color:var(--ink);font-weight:800;font-size:15px}
+.userSettingsMenu button span{font-size:22px;color:var(--deep);line-height:1}
+.userSettingsMenu button.userSettingsDanger{color:#b84d65}
+.userSettingsPage{line-height:1.75}
+.userSettingsPage.hidden{display:none!important}
+.userSettingsBack{border:1px solid var(--line);border-radius:12px;padding:9px 12px;background:var(--theme-panel,var(--soft));color:var(--deep);font-weight:800;margin:0 0 14px}
+.userSettingsPage h3{color:var(--deep);margin:8px 0}
+.userSettingsPage p,.userSettingsPage li{overflow-wrap:anywhere}
+.userSettingsPage .settingsInfoCard{padding:13px;border:1px solid var(--line);border-radius:15px;background:var(--theme-panel,var(--soft));margin:10px 0}
+.userSettingsPage input{width:100%;box-sizing:border-box}
+.userSettingsPage .settingsAction{width:100%;margin-top:10px}
+.userSettingsPage .settingsNotice{font-size:13px;color:var(--deep);opacity:.85}
+@media(min-width:700px){.userSettingsBackdrop{align-items:center}.userSettingsSheet{max-height:82vh}}
+</style>
+\n</head>
 <body>
 <header class="siteHeader">
   <div class="logo" aria-hidden="true">✧</div>
   <div class="brand"><small>MY FRIEND CARD COLLECTION</small><h1>アイプリ フレンドカード図鑑</h1></div>
+  <button type="button" class="userSettingsTrigger" id="openUserSettings" aria-label="設定を開く" title="設定">⚙️</button>
 </header>
+<div id="userSettingsDialog" class="userSettingsBackdrop hidden" aria-hidden="true">
+  <section class="userSettingsSheet" role="dialog" aria-modal="true" aria-labelledby="userSettingsTitle">
+    <div class="userSettingsTop">
+      <h2 id="userSettingsTitle">設定</h2>
+      <button type="button" id="closeUserSettings" class="userSettingsClose" aria-label="閉じる">×</button>
+    </div>
+    <div id="userSettingsMenu" class="userSettingsMenu">
+      <button type="button" data-user-setting="account">アカウント情報 <span>›</span></button>
+      <button type="button" data-user-setting="password">パスワード変更 <span>›</span></button>
+      <button type="button" data-user-setting="guide">使い方ガイド <span>›</span></button>
+      <button type="button" data-user-setting="terms">利用規約 <span>›</span></button>
+      <button type="button" data-user-setting="privacy">プライバシーポリシー <span>›</span></button>
+      <button type="button" data-user-setting="about">このアプリについて <span>›</span></button>
+      <button type="button" data-user-setting="delete" class="userSettingsDanger">アカウント削除 <span>›</span></button>
+    </div>
+    <div id="userSettingsPage" class="userSettingsPage hidden">
+      <button type="button" id="userSettingsBack" class="userSettingsBack">‹ 設定メニューに戻る</button>
+      <div id="userSettingsPageContent"></div>
+    </div>
+  </section>
+</div>
 <main>
   <section id="settings" class="panel hidden" aria-hidden="true">
     <h2>Supabase接続設定</h2>
@@ -863,7 +911,8 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     $('cardPublicToggle').checked=false;$('cardCharacter').value='';editingCardId=null;$('addCard').textContent='フレカを登録';$('cancelCardEdit').classList.add('hidden');
   }
   function beginEditCard(card){
-    setRegisterMode('add');
+  
+  setRegisterMode('add');
     const d=card.card_data||{};editingCardId=card.id;$('newCardName').value=card.card_name||'';$('cardColor').value=d.color||'';$('cardCharacter').value=card.character_id||'';$('newCharacterInline').value='';$('cardAppearance').value=d.appearance||'';const savedOrientation=document.querySelector('input[name="cardPhotoOrientation"][value="'+(d.photo_orientation==='landscape'?'landscape':'portrait')+'"]');if(savedOrientation)savedOrientation.checked=true;$('cardSeries').value=d.series||'';$('cardMemo').value=d.memo||'';$('cardPublicToggle').checked=card.is_public!==false;$('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');$('cardRegisterPanel').scrollIntoView({behavior:'smooth',block:'start'});message('cardRegisterStatus','編集モードです。写真・QRを選び直さなければ現在の画像を維持します。');
   }
   async function addCard(){
@@ -1622,6 +1671,56 @@ $('signupBtn')?.addEventListener('click',()=>runSafely(signUp));
     if(!shareUrl)return message('shareStatus','共有URLがありません。プロフィール設定を確認してください。');
     try{await navigator.clipboard.writeText(shareUrl);message('shareStatus','共有URLをコピーしました。');}catch{message('shareStatus',shareUrl);}
   });
+
+  // User-facing settings dialog (separate from administrator Supabase connection settings).
+  const userSettingsDialog = $('userSettingsDialog');
+  const userSettingsMenu = $('userSettingsMenu');
+  const userSettingsPage = $('userSettingsPage');
+  const userSettingsPageContent = $('userSettingsPageContent');
+  function closeUserSettings(){
+    userSettingsDialog?.classList.add('hidden');
+    userSettingsDialog?.setAttribute('aria-hidden','true');
+    userSettingsMenu?.classList.remove('hidden');
+    userSettingsPage?.classList.add('hidden');
+  }
+  function openUserSettings(){
+    if(shareViewerMode)return;
+    userSettingsDialog?.classList.remove('hidden');
+    userSettingsDialog?.setAttribute('aria-hidden','false');
+    userSettingsMenu?.classList.remove('hidden');
+    userSettingsPage?.classList.add('hidden');
+  }
+  function showUserSettingsPage(key){
+    const loggedIn=!!currentUser;
+    const userId=currentUser?.id||'未ログイン';
+    const pages={
+      account:`<h3>アカウント情報</h3><div class="settingsInfoCard"><strong>ログイン状態</strong><p>${loggedIn?'ログイン中':'未ログイン'}</p><strong>ユーザーID（内部識別子）</strong><p>${userId}</p><p class="settingsNotice">ユーザーID・プロフィール情報の表示内容は、現在の登録状態に基づきます。</p></div>`,
+      password:`<h3>パスワード変更</h3>${loggedIn?`<p>新しいパスワードを入力してください。8文字以上を設定してください。</p><label>新しいパスワード<input id="settingsNewPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label><label>新しいパスワード（確認）<input id="settingsConfirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label><button type="button" class="settingsAction" id="settingsChangePassword">パスワードを変更</button><p id="settingsPasswordStatus" role="status"></p>`:'<p>パスワードを変更するにはログインしてください。</p>'}`,
+      guide:`<h3>使い方ガイド</h3><div class="settingsInfoCard"><strong>1. マイキャラを登録</strong><p>ホームからマイキャラを登録します。登録したマイキャラはマイキャラ図鑑で確認できます。</p></div><div class="settingsInfoCard"><strong>2. フレカを登録</strong><p>「フレカ登録」からカード情報や画像、QRコードを登録します。</p></div><div class="settingsInfoCard"><strong>3. 検索・整理</strong><p>「フレカ検索」で登録したカードを検索できます。</p></div><div class="settingsInfoCard"><strong>4. 共有</strong><p>共有画面で公開設定を確認してください。公開設定や各データの公開状態によって、他の人に表示される内容が変わります。</p></div><div class="settingsInfoCard"><strong>5. バックアップ</strong><p>ホームのバックアップ機能を利用し、大切なデータを定期的に保存してください。</p></div>`,
+      terms:`<h3>利用規約</h3><p>本アプリは、アイプリのフレンドカードおよびマイキャラ情報を個人で整理・管理するためのツールです。</p><ul><li>登録する画像・文章等は、利用者自身が適切な権利・利用許諾を確認したうえで使用してください。</li><li>他者への嫌がらせ、権利侵害、不正アクセスその他不適切な目的での利用を禁止します。</li><li>サービスの内容は、必要に応じて変更または停止する場合があります。</li><li>データのバックアップは利用者自身でも行ってください。</li></ul><p class="settingsNotice">この規約はアプリ利用上の基本事項を示すもので、個別の法的助言を行うものではありません。</p>`,
+      privacy:`<h3>プライバシーポリシー</h3><p>本アプリでは、アカウント認証および登録データの保存のため、Supabaseを利用しています。</p><ul><li>取り扱う情報：ユーザーIDに対応する認証情報、マイキャラ名・画像、フレンドカード情報・画像・QRコード、公開設定、バックアップデータ等。</li><li>登録データは、アプリ内の公開設定に応じて他の利用者に表示される場合があります。共有前に公開範囲を確認してください。</li><li>認証・データ保存・画像保存のため、必要な情報がSupabaseのサービス上で処理・保管されます。</li><li>パスワードそのものをアプリ運営者が閲覧することはできません。</li></ul><p class="settingsNotice">アカウント削除機能は現在サーバー側の安全な削除処理を準備中です。現時点では、この画面からアカウントや保存データが削除されたとみなすことはできません。</p>`,
+      about:`<h3>このアプリについて</h3><div class="settingsInfoCard"><strong>アイプリ フレンドカード図鑑</strong><p>マイキャラやフレンドカードを登録・検索・整理し、必要に応じて共有するためのコレクション管理アプリです。</p><p class="settingsNotice">本アプリは非公式のファン向けツールであり、関連する権利者・公式サービスとは関係ありません。</p></div>`,
+      delete:`<h3>アカウント削除</h3><div class="settingsInfoCard"><p><strong>アカウントと登録データの完全削除について</strong></p><p>削除時には、アカウントに紐づくプロフィール、マイキャラ、フレカ、画像・QRコード、バックアップ、共有情報および認証アカウントを対象にする必要があります。</p><p class="settingsNotice">安全に完全削除するためのサーバー側処理がまだ接続されていません。誤って一部のデータだけが消えることを防ぐため、現在この画面からの削除操作は受け付けていません。</p><p>削除機能を有効にする際は、パスワード再入力と最終確認を行ったうえで削除する方式にします。</p></div><button type="button" class="settingsAction secondary" disabled>アカウント削除（準備中）</button>`
+    };
+    userSettingsMenu?.classList.add('hidden');
+    userSettingsPage?.classList.remove('hidden');
+    userSettingsPageContent.innerHTML=pages[key]||'<p>ページを表示できません。</p>';
+    if(key==='password'){
+      $('settingsChangePassword')?.addEventListener('click',async()=>{
+        const p=$('settingsNewPassword')?.value||'',q=$('settingsConfirmPassword')?.value||'',status=$('settingsPasswordStatus');
+        if(p.length<8){if(status)status.textContent='パスワードは8文字以上にしてください。';return;}
+        if(p!==q){if(status)status.textContent='確認用パスワードが一致しません。';return;}
+        try{const {error}=await client.auth.updateUser({password:p});if(error)throw error;if(status)status.textContent='パスワードを変更しました。';$('settingsNewPassword').value='';$('settingsConfirmPassword').value='';}
+        catch(error){if(status)status.textContent='変更できませんでした：'+(error?.message||error);}
+      });
+    }
+  }
+  $('openUserSettings')?.addEventListener('click',openUserSettings);
+  $('closeUserSettings')?.addEventListener('click',closeUserSettings);
+  $('userSettingsBack')?.addEventListener('click',()=>{userSettingsPage?.classList.add('hidden');userSettingsMenu?.classList.remove('hidden');});
+  userSettingsMenu?.querySelectorAll('[data-user-setting]').forEach(button=>button.addEventListener('click',()=>showUserSettingsPage(button.dataset.userSetting)));
+  userSettingsDialog?.addEventListener('click',event=>{if(event.target===userSettingsDialog)closeUserSettings();});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!userSettingsDialog?.classList.contains('hidden'))closeUserSettings();});
 
   setRegisterMode('add');
   showView(shareViewerMode?'share':'home');
