@@ -270,6 +270,33 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   word-break:normal;
 }
 </style>
+
+<style>
+/* Compact two-column layout: preserve full images while shortening each card. */
+@media (max-width: 600px) {
+  .catalogueCard .photoStage,
+  #sharedCardsList .catalogueCard .photoStage,
+  .photoStage { aspect-ratio: 1 / 1 !important; }
+  .catalogueCard { gap: 6px !important; padding: 8px !important; border-radius: 15px !important; }
+  .catalogueCard .cardTitle,
+  #sharedCardsList .catalogueCard .cardTitle { min-height: 2.5em !important; font-size: clamp(11px, 3vw, 16px) !important; line-height: 1.2 !important; }
+  .catalogueCard .cardBottom,
+  #sharedCardsList .catalogueCard .cardBottom { gap: 5px !important; }
+  .catalogueCard .characterName,
+  #sharedCardsList .catalogueCard .characterName { min-height: 34px !important; padding: 4px 3px !important; font-size: clamp(11px, 2.8vw, 15px) !important; }
+  .catalogueCard .qrStage img,
+  #sharedCardsList .catalogueCard .qrStage img { padding: 1px !important; }
+  .catalogueCard .cardVisibilityToggle { margin-top: 2px; font-size: 11px; gap: 5px; }
+  #charsList .myCharacterGrid { gap: 8px !important; }
+  #charsList .myCharacterCard { padding: 8px !important; border-radius: 17px !important; }
+  #charsList .myCharacterTitle { margin: 1px 0 5px !important; font-size: clamp(13px, 3.5vw, 17px) !important; line-height: 1.2 !important; }
+  #charsList .myCharacterImageBox { height: clamp(88px, 23vw, 142px) !important; margin-bottom: 7px !important; }
+  #charsList .myCharacterActions { gap: 6px !important; }
+  #charsList .myCharacterActions button { min-height: 36px !important; padding: 6px 4px !important; font-size: 11px !important; line-height: 1.2 !important; }
+  #charsList .myCharacterOrderControls { gap: 12px !important; margin-top: 3px !important; }
+}
+
+</style>
 </head>
 <body>
 <header class="siteHeader">
@@ -351,7 +378,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     </details>
     <section id="cardCataloguePanel" class="panel cataloguePanel" aria-live="polite">
       <div class="between"><h3>フレカ図鑑</h3><span id="searchResultCount" class="pill">0 枚</span></div>
-      <label class="catalogueSortControl">並び替え<select id="cardSort"><option value="default">登録順</option><option value="character">マイキャラ順</option><option value="name">コーデ名順</option></select></label>
+      <label class="catalogueSortControl">並び替え<select id="cardSort"><option value="character" selected>マイキャラ順</option><option value="default">登録順</option><option value="name">コーデ名順</option></select></label>
       <div id="cardsList" class="itemList"><p class="muted">ログインするとフレカを表示できます。</p></div>
     </section>
 
@@ -427,7 +454,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         </div>
       </details>
       <div class="between"><h3>フレカ図鑑</h3><span id="sharedSearchResultCount" class="pill">0 枚</span></div>
-      <label class="catalogueSortControl">並び替え<select id="sharedCardSort"><option value="default">登録順</option><option value="character">マイキャラ順</option><option value="name">コーデ名順</option></select></label>
+      <label class="catalogueSortControl">並び替え<select id="sharedCardSort"><option value="character" selected>マイキャラ順</option><option value="default">登録順</option><option value="name">コーデ名順</option></select></label>
       <div id="sharedCardsList" class="cardsList"></div>
       </section>
       <nav class="sharedBottomTabs" aria-label="共有図鑑の切り替え">
@@ -1044,7 +1071,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const matchesSeries=!seriesFilter||String(d.series||'')===seriesFilter;
       return matchesKeyword&&matchesAppearance&&matchesSeries&&(activeCharacter==='all'||card.character_id===activeCharacter);
     });
-    const sortedFiltered=sortCardsForDisplay(filtered,$('cardSort')?.value||'default');
+    const sortedFiltered=sortCardsForDisplay(filtered,$('cardSort')?.value||'character');
     if(count)count.textContent=filtered.length+' 枚';
     if(!filtered.length){appendText(list,'p',cards.length?'条件に合うフレカがありません。':'フレカはまだ登録されていません。','muted');return;}
     sortedFiltered.forEach(card=>{
@@ -1139,24 +1166,24 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(!currentUser){appendText(list,'p','ログインするとマイキャラ図鑑を表示できます。','muted');return;}
     if(!characters.length){appendText(list,'p','マイキャラはまだ登録されていません。','muted');return;}
     const grid=document.createElement('div');
-    grid.style.cssText=`display:grid;grid-template-columns:repeat(${characters.length>1?2:1},minmax(0,1fr));gap:12px`;
+    grid.className='myCharacterGrid';grid.style.cssText=`display:grid;grid-template-columns:repeat(${characters.length>1?2:1},minmax(0,1fr));gap:12px`;
     characters.forEach(c=>{
       const d=c.character_data||{};
       const card=document.createElement('article');
-      const theme=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';card.style.cssText='min-width:0;padding:12px;border:2px solid '+theme+'66;border-radius:22px;background:linear-gradient(145deg,#fff,'+theme+'18);box-shadow:var(--shadow);text-align:center';
-      const title=document.createElement('h3');title.textContent=c.character_name;title.style.cssText='margin:4px 0 8px;color:'+theme+';overflow-wrap:anywhere;font-weight:900';card.appendChild(title);
-      const imgBox=document.createElement('div');imgBox.style.cssText='display:flex;align-items:center;justify-content:center;width:100%;height:clamp(120px,32vw,210px);margin:0 auto 12px;border-radius:14px;background:var(--soft);overflow:hidden';
+      const theme=/^#[0-9a-f]{6}$/i.test(d.sheet_color||'')?d.sheet_color:'#8bd7f3';card.className='myCharacterCard';card.style.cssText='min-width:0;padding:12px;border:2px solid '+theme+'66;border-radius:22px;background:linear-gradient(145deg,#fff,'+theme+'18);box-shadow:var(--shadow);text-align:center';
+      const title=document.createElement('h3');title.className='myCharacterTitle';title.textContent=c.character_name;title.style.cssText='margin:4px 0 8px;color:'+theme+';overflow-wrap:anywhere;font-weight:900';card.appendChild(title);
+      const imgBox=document.createElement('div');imgBox.className='myCharacterImageBox';imgBox.style.cssText='display:flex;align-items:center;justify-content:center;width:100%;height:clamp(120px,32vw,210px);margin:0 auto 12px;border-radius:14px;background:var(--soft);overflow:hidden';
       const img=document.createElement('img');img.alt=c.character_name;img.loading='lazy';img.style.cssText='width:100%;height:100%;object-fit:contain';
       const mainPath=d.main_image_path||d.image_path||d.image_url||d.image||d.photo_url||d.illustration_url;
       if(mainPath){(async()=>{const url=String(mainPath).startsWith('http')?mainPath:await signedImageUrl(mainPath);if(url){img.src=url;imgBox.replaceChildren(img);}else imgBox.textContent='イメージ画像準備中';})();}
       else imgBox.textContent='イメージ画像準備中';
       imgBox.style.cursor='pointer';imgBox.setAttribute('role','button');imgBox.setAttribute('aria-label',c.character_name+'の図鑑詳細を表示');imgBox.addEventListener('click',()=>renderCharacterDetail(c));
       card.appendChild(imgBox);
-      const actions=document.createElement('div');actions.style.cssText='display:grid;grid-template-columns:1fr;gap:8px';
+      const actions=document.createElement('div');actions.className='myCharacterActions';actions.style.cssText='display:grid;grid-template-columns:1fr;gap:8px';
       const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='✎ マイキャラ編集';edit.addEventListener('click',()=>renderCharacterEditForm(c));
       const cards=document.createElement('button');cards.type='button';cards.className='secondary';cards.textContent=c.character_name+'のフレカ';cards.addEventListener('click',()=>{activeCharacter=c.id;showView('search');renderCharacterChips();renderCards();});
       [edit,cards].forEach(b=>b.style.cssText+=';min-height:44px;border-radius:14px;font-weight:800;font-size:13px;border:1px solid '+theme+'88;background:linear-gradient(135deg,#fff,'+theme+'22);color:'+theme);actions.append(edit,cards);card.appendChild(actions);
-      const orderControls=document.createElement('div');orderControls.style.cssText='display:flex;justify-content:center;align-items:center;gap:18px;margin:7px 0 0;opacity:.72';
+      const orderControls=document.createElement('div');orderControls.className='myCharacterOrderControls';orderControls.style.cssText='display:flex;justify-content:center;align-items:center;gap:18px;margin:7px 0 0;opacity:.72';
       const up=document.createElement('button');up.type='button';up.className='secondary';up.textContent='↑';up.disabled=characters.indexOf(c)===0;up.title='上へ';up.setAttribute('aria-label',c.character_name+'を1つ上へ');up.style.cssText='width:34px;height:28px;min-height:28px;padding:0;border:0;border-radius:9px;background:transparent;color:'+theme+';font-size:18px;font-weight:800;line-height:1';
       const down=document.createElement('button');down.type='button';down.className='secondary';down.textContent='↓';down.disabled=characters.indexOf(c)===characters.length-1;down.title='下へ';down.setAttribute('aria-label',c.character_name+'を1つ下へ');down.style.cssText='width:34px;height:28px;min-height:28px;padding:0;border:0;border-radius:9px;background:transparent;color:'+theme+';font-size:18px;font-weight:800;line-height:1';
       [up,down].forEach(b=>{b.style.opacity=b.disabled?'.25':'1';b.addEventListener('click',()=>moveCharacterOrder(c.id,b===up?-1:1));});
@@ -1330,7 +1357,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         &&(!seriesFilter||String(d.series||'')===seriesFilter)
         &&(activeCharacter==='all'||card.character_id===activeCharacter);
     });
-    const sortedVisible=sortCardsForDisplay(visible,$('sharedCardSort')?.value||'default');
+    const sortedVisible=sortCardsForDisplay(visible,$('sharedCardSort')?.value||'character');
     const count=$('sharedSearchResultCount');if(count)count.textContent=visible.length+' 枚';
     if(!visible.length){appendText(list,'p',cards.length?'条件に合うフレカがありません。':'公開されているフレカはありません。','muted');return;}
     for(const card of sortedVisible){
