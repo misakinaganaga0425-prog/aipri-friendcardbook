@@ -515,6 +515,20 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
 
   let client = null, currentUser = null, bootPromise = null;
   let cards = [], characters = [], shareUrl = '', activeCharacter = 'all';
+
+  // Supabase/PostgREST returns at most 1,000 rows per request by default.
+  // Fetch in inclusive range windows so large collections and backups are complete.
+  async function fetchAllRows(buildQuery, pageSize = 1000) {
+    const rows = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+      if (error) throw error;
+      const page = data || [];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return rows;
+  }
   const BUCKET = 'friend-card-media';
   const SERIES = ['1弾','2弾','3弾','4弾','5弾','6弾','7弾','8弾','9弾','10弾','プリマジ','その他'];
   const message = (id, text) => { const el = $(id); if (el) el.textContent = text || ''; };
@@ -1092,9 +1106,10 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   }
   async function loadCards(){
     if(!client||!currentUser)return;
-    const {data,error}=await client.from('cards').select('id,card_name,card_data,character_id,is_public,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false});
-    if(error){message('cardRegisterStatus','読み込みエラー：'+error.message);return;}
-    cards=data||[];message('cardCount',String(cards.length));updateSeriesFilterOptions();renderCards();renderManageCards();
+    try{
+      cards=await fetchAllRows(()=>client.from('cards').select('id,card_name,card_data,character_id,is_public,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false}));
+      message('cardCount',String(cards.length));updateSeriesFilterOptions();renderCards();renderManageCards();
+    }catch(error){message('cardRegisterStatus','読み込みエラー：'+error.message);}
   }
   async function moveCharacterOrder(characterId,direction){
     const from=characters.findIndex(c=>c.id===characterId),to=from+direction;
@@ -1279,8 +1294,10 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       message('characterStatus',!client?'Supabaseに接続していません。接続設定を確認してください。':'ログイン状態を確認できません。ホームから再ログインしてください。');
       return;
     }
-    const {data,error}=await client.from('my_characters').select('id,character_name,character_data,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false});
-    if(error){
+    let data;
+    try{
+      data=await fetchAllRows(()=>client.from('my_characters').select('id,character_name,character_data,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false}));
+    }catch(error){
       message('characterStatus','読み込みエラー：'+error.message);
       const list=$('charsList');if(list){list.replaceChildren();appendText(list,'p','マイキャラを読み込めませんでした。通信状態とSupabaseの設定を確認して、再読み込みしてください。','muted');}
       return;
@@ -1363,14 +1380,16 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(!profile)throw new Error('この図鑑は非公開、または共有リンクが無効です。');
     applyThemePalette(localStorage.getItem(PALETTE_KEY)||profile.theme_palette||'sky');
     $('shareOwnerName').textContent=profile.display_name ? profile.display_name+' さんのフレカ図鑑' : 'フレカ図鑑';
-    const [cardResult,charResult]=await Promise.all([
-      client.from('cards').select('id,card_name,card_data,character_id,is_public,created_at').eq('user_id',profile.id).eq('is_public',true).order('created_at',{ascending:false}),
-      client.from('my_characters').select('id,character_name,character_data,created_at').eq('user_id',profile.id).order('created_at',{ascending:false})
-    ]);
-    if(cardResult.error)throw new Error('フレカを取得できません：'+cardResult.error.message);
-    if(charResult.error)throw new Error('マイキャラを取得できません：'+charResult.error.message);
-    cards=cardResult.data||[];
-    characters=(charResult.data||[]).filter(c=>c.character_data?.is_public===true).map((c,index)=>({...c,_fallbackOrder:index})).sort((a,b)=>{
+    let sharedRows;
+    try{
+      const [sharedCards,sharedCharacters]=await Promise.all([
+        fetchAllRows(()=>client.from('cards').select('id,card_name,card_data,character_id,is_public,created_at').eq('user_id',profile.id).eq('is_public',true).order('created_at',{ascending:false})),
+        fetchAllRows(()=>client.from('my_characters').select('id,character_name,character_data,created_at').eq('user_id',profile.id).order('created_at',{ascending:false}))
+      ]);
+      sharedRows={cards:sharedCards,characters:sharedCharacters};
+    }catch(error){throw new Error('共有図鑑のデータを取得できません：'+error.message);}
+    cards=sharedRows.cards;
+    characters=(sharedRows.characters||[]).filter(c=>c.character_data?.is_public===true).map((c,index)=>({...c,_fallbackOrder:index})).sort((a,b)=>{
       const ao=Number.isInteger(a.character_data?.display_order)?a.character_data.display_order:a._fallbackOrder;
       const bo=Number.isInteger(b.character_data?.display_order)?b.character_data.display_order:b._fallbackOrder;
       return ao-bo;
@@ -1417,13 +1436,12 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(!currentUser||!client)throw new Error('ログインしてください。');
     if(!window.JSZip)throw new Error('バックアップ機能を読み込めません。通信環境を確認してください。');
     const zip=new JSZip(), assetIndex=[];
-    const [cardResult,charResult,profileResult]=await Promise.all([
-      client.from('cards').select('*').eq('user_id',currentUser.id),
-      client.from('my_characters').select('*').eq('user_id',currentUser.id),
+    const [cardRows,characterRows,profileResult]=await Promise.all([
+      fetchAllRows(()=>client.from('cards').select('*').eq('user_id',currentUser.id)),
+      fetchAllRows(()=>client.from('my_characters').select('*').eq('user_id',currentUser.id)),
       client.from('profiles').select('id,display_name,theme_palette,is_public,share_slug').eq('id',currentUser.id).maybeSingle()
     ]);
-    if(cardResult.error)throw cardResult.error;if(charResult.error)throw charResult.error;if(profileResult.error)throw profileResult.error;
-    const cardRows=cardResult.data||[], characterRows=charResult.data||[];
+    if(profileResult.error)throw profileResult.error;
     const paths=[...new Set(cardRows.flatMap(card=>[card.card_data?.photo_path,card.card_data?.qr_path]).filter(Boolean))];
     for(let i=0;i<paths.length;i++){
       const path=paths[i],{data,error}=await client.storage.from(BUCKET).download(path);
