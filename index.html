@@ -290,109 +290,27 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   #charsList .myCharacterGrid { gap: 8px !important; }
   #charsList .myCharacterCard { padding: 8px !important; border-radius: 17px !important; }
   #charsList .myCharacterTitle { margin: 1px 0 5px !important; font-size: clamp(13px, 3.5vw, 17px) !important; line-height: 1.2 !important; }
-  #charsList .myCharacterImageBox { height: clamp(88px, 23vw, 142px) !important; margin-bottom: 7px !important; }
-  #charsList .myCharacterActions { gap: 6px !important; }
-  #charsList .myCharacterActions button { min-height: 36px !important; padding: 6px 4px !important; font-size: 11px !important; line-height: 1.2 !important; }
+  /* Keep My Character photos prominent; save height in the controls instead. */
+  #charsList .myCharacterImageBox { height: clamp(140px, 36vw, 155px) !important; margin-bottom: 5px !important; }
+  #charsList .myCharacterActions { gap: 4px !important; }
+  #charsList .myCharacterActions button { min-height: 30px !important; padding: 3px 4px !important; font-size: 11px !important; line-height: 1.15 !important; }
+  #charsList .myCharacterOrderControls { margin-top: 1px !important; gap: 10px !important; }
+  /* Keep one fixed photo-stage height so QR and details never shift by orientation. */
+  .catalogueCard .photoStage, #sharedCardsList .catalogueCard .photoStage, .photoStage { aspect-ratio: 1 / 1 !important; }
+  /* Only portrait photos are capped; landscape photo size and QR layout stay unchanged. */
+  .catalogueCard .photoStage img.photoImagePortrait,
+  #sharedCardsList .catalogueCard .photoStage img.photoImagePortrait,
+  .photoStage img.photoImagePortrait {
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: 140px !important;
+    object-fit: contain !important;
+  }
   #charsList .myCharacterOrderControls { gap: 12px !important; margin-top: 3px !important; }
 }
 
 </style>
-
-<style id="compact-layout-with-full-photo-fix">
-/* Keep the original full photo visible at its natural aspect ratio.
-   Reduce the surrounding controls instead of shrinking/cropping the photo. */
-@media (max-width: 600px) {
-  .catalogueCard .photoStage,
-  #sharedCardsList .catalogueCard .photoStage,
-  .photoStage {
-    width: 100% !important;
-    aspect-ratio: auto !important;
-    height: auto !important;
-    min-height: 0 !important;
-    overflow: visible !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-  .catalogueCard .photoStage img,
-  #sharedCardsList .catalogueCard .photoStage img,
-  .photoStage img {
-    display: block !important;
-    width: 100% !important;
-    height: auto !important;
-    max-height: none !important;
-    object-fit: contain !important;
-  }
-
-  /* Smaller QR area; keep it square and fully readable. */
-  .catalogueCard .cardBottom,
-  #sharedCardsList .catalogueCard .cardBottom {
-    grid-template-columns: clamp(68px, 21vw, 84px) minmax(0, 1fr) !important;
-    gap: 7px !important;
-    align-items: center !important;
-  }
-  .catalogueCard .qrStage,
-  #sharedCardsList .catalogueCard .qrStage {
-    width: 100% !important;
-    aspect-ratio: 1 / 1 !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-  .catalogueCard .qrStage img,
-  #sharedCardsList .catalogueCard .qrStage img {
-    display: block !important;
-    width: 100% !important;
-    height: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
-    aspect-ratio: 1 / 1 !important;
-    object-fit: contain !important;
-    padding: 2px !important;
-  }
-  .catalogueCard .qrStage .photoPlaceholder,
-  #sharedCardsList .catalogueCard .qrStage .photoPlaceholder {
-    width: 100% !important;
-    min-height: 0 !important;
-    height: 100% !important;
-    padding: 3px !important;
-    font-size: 10px !important;
-    display: grid !important;
-    place-items: center !important;
-  }
-
-  /* Keep the My Character name badge centered. */
-  .catalogueCard .characterName,
-  #sharedCardsList .catalogueCard .characterName {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
-    min-height: 38px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Save vertical space with shorter My Character action buttons.
-     The character pictures themselves retain their current size. */
-  #charsList .myCharacterActions {
-    gap: 5px !important;
-  }
-  #charsList .myCharacterActions button {
-    min-height: 29px !important;
-    height: auto !important;
-    padding: 4px 4px !important;
-    line-height: 1.15 !important;
-    font-size: 11px !important;
-  }
-  #charsList .myCharacterCard {
-    gap: 5px !important;
-  }
-}
-</style>
-
 </head>
 <body>
 <header class="siteHeader">
@@ -1130,7 +1048,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(data?.photo_path)tasks.push((async()=>{
       const transform={width:landscape?1200:900,height:landscape?800:1400,quality:76,resize:'contain'};
       const url=await signedImageUrl(data.photo_path,transform);
-      if(url){const img=document.createElement('img');img.alt='コーデ写真';img.loading='lazy';img.decoding='async';img.fetchPriority='low';img.src=url;photoStage.replaceChildren(img);}
+      if(url){const img=document.createElement('img');img.className=landscape?'photoImageLandscape':'photoImagePortrait';img.alt='コーデ写真';img.loading='lazy';img.decoding='async';img.fetchPriority='low';img.src=url;photoStage.replaceChildren(img);}
     })());
     if(data?.qr_path)tasks.push((async()=>{
       const url=await signedImageUrl(data.qr_path);
