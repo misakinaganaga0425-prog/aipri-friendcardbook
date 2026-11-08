@@ -670,6 +670,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       <summary class="searchSummary"><span>図鑑を検索・絞り込み</span><span class="summaryHint">タップして開閉</span></summary>
       <label>キーワード検索<input id="cardSearch" type="search" placeholder="コーデ名・色・マイキャラ・スタイル・弾数・メモ" autocomplete="off"></label>
       <div class="filterGrid">
+        <label>色<select id="colorFilter"><option value="">すべての色</option></select></label>
         <label>マイキャラのスタイル<select id="appearanceFilter"><option value="">すべてのスタイル</option></select></label>
         <label>コーデの弾数・シリーズ<select id="seriesFilter"><option value="">すべて</option></select></label>
       </div>
@@ -696,6 +697,11 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       <label>マイキャラ<select id="cardCharacter"><option value="">マイキャラを選択（任意）</option></select></label>
       <label>マイキャラをこの場で新規登録（任意）<input id="newCharacterInline" maxlength="100" placeholder="例：いのり"></label>
       <label>マイキャラのスタイル<select id="cardAppearance"><option value="">スタイルを選択（任意）</option></select></label>
+      <div class="panel" style="padding:10px;margin:6px 0">
+        <label style="margin:0 0 7px">新しいスタイル名を追加（画像はマイキャラ編集から登録）<input id="newCardAppearanceName" maxlength="80" placeholder="例：キューティツイン"></label>
+        <button type="button" class="secondary smallButton" id="addCardAppearanceName">＋ スタイル名を追加</button>
+        <p class="hint" id="cardAppearanceAddStatus">追加したスタイル名は、フレカ保存時に選択中のマイキャラへ登録されます。</p>
+      </div>
       <label>コーデの弾数・シリーズ<input id="cardSeries" maxlength="100" placeholder="例：1弾、プリマジ、アイカツ！ など"><span class="hint">自由に入力できます。シリーズ名や作品名も登録できます。</span></label>
       <fieldset class="photoOrientationField"><legend>写真の向き</legend>
         <label><input type="radio" name="cardPhotoOrientation" value="portrait" checked> 縦向き</label>
@@ -715,6 +721,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         <summary class="searchSummary"><span>フレカを検索・絞り込み</span><span class="summaryHint">タップして開閉</span></summary>
         <label>キーワード検索<input id="manageCardSearch" type="search" placeholder="コーデ名・色・マイキャラ・スタイル・弾数・メモ" autocomplete="off"></label>
         <div class="filterGrid">
+          <label>色<select id="manageCardColorFilter"><option value="">すべての色</option></select></label>
           <label>マイキャラ<select id="manageCardCharacterFilter"><option value="">すべてのマイキャラ</option></select></label>
           <label>コーデの弾数・シリーズ<select id="manageCardSeriesFilter"><option value="">すべて</option></select></label>
         </div>
@@ -748,6 +755,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         <summary class="searchSummary"><span>図鑑を検索・絞り込み</span><span class="summaryHint">タップして開閉</span></summary>
         <label>キーワード検索<input id="sharedCardSearch" type="search" placeholder="コーデ名・色・マイキャラ・スタイル・弾数・メモ" autocomplete="off"></label>
         <div class="filterGrid">
+          <label>色<select id="sharedColorFilter"><option value="">すべての色</option></select></label>
           <label>マイキャラのスタイル<input id="sharedAppearanceFilter" type="search" placeholder="例：通常、ツインテール、ボブ" autocomplete="off"></label>
           <label>コーデの弾数・シリーズ<select id="sharedSeriesFilter"><option value="">すべて</option></select></label>
         </div>
@@ -1195,7 +1203,10 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     return path;
   }
   let editingCardId=null;
+  let pendingCardAppearanceTypes=[];
   function resetCardForm(){
+    pendingCardAppearanceTypes=[];
+    if($('newCardAppearanceName'))$('newCardAppearanceName').value='';
     const portraitOrientation=document.querySelector('input[name="cardPhotoOrientation"][value="portrait"]');if(portraitOrientation)portraitOrientation.checked=true;
     ['newCardName','cardColor','newCharacterInline','cardAppearance','cardSeries','cardMemo','cardPhoto','cardQr'].forEach(id=>{if($(id))$(id).value='';});
     $('cardPublicToggle').checked=false;$('cardCharacter').value='';editingCardId=null;$('addCard').textContent='フレカを登録';$('cancelCardEdit').classList.add('hidden');
@@ -1226,6 +1237,17 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     try{
       if(inlineCharacterName){const {data:newCharacter,error:charError}=await client.from('my_characters').insert({user_id:currentUser.id,character_name:inlineCharacterName,character_data:{memo:''}}).select('id,character_name,character_data,created_at').single();if(charError)throw new Error('マイキャラ登録エラー：'+charError.message);characters.unshift(newCharacter);characterId=newCharacter.id;}
       const oldCard=cards.find(c=>c.id===cardId);if(isEdit&&!oldCard)throw new Error('編集するフレカが見つかりません。');
+      if(pendingCardAppearanceTypes.length){
+        if(!characterId)throw new Error('スタイルを登録するにはマイキャラを選択してください。');
+        const targetCharacter=characters.find(c=>c.id===characterId);
+        if(!targetCharacter)throw new Error('スタイルを登録するマイキャラが見つかりません。');
+        const currentTypes=Array.isArray(targetCharacter.character_data?.appearance_types)?targetCharacter.character_data.appearance_types:[];
+        const mergedTypes=[...new Set([...currentTypes,...pendingCardAppearanceTypes].map(x=>String(x||'').trim()).filter(Boolean))];
+        const nextCharacterData={...(targetCharacter.character_data||{}),appearance_types:mergedTypes};
+        const {error:styleSaveError}=await client.from('my_characters').update({character_data:nextCharacterData}).eq('id',characterId).eq('user_id',currentUser.id);
+        if(styleSaveError)throw new Error('スタイル名の保存に失敗しました：'+styleSaveError.message);
+        targetCharacter.character_data=nextCharacterData;
+      }
       const oldData=oldCard?.card_data||{};
       const fields={...getCardDataFields(),brand:oldData.brand||'',photo_path:oldData.photo_path||null,qr_path:oldData.qr_path||null};
       if(isEdit){const {error}=await client.from('cards').update({card_name:name,card_data:fields,character_id:characterId,is_public:$('cardPublicToggle').checked}).eq('id',cardId).eq('user_id',currentUser.id);if(error)throw error;}
@@ -1252,9 +1274,15 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     updateCardAppearanceOptions();
     updateAppearanceFilterOptions();
   }
+  function cleanAppearanceName(value){
+    if(typeof value!=='string')return '';
+    const name=value.trim();
+    if(!name||/^\[object (?:Event|MouseEvent|PointerEvent|InputEvent|KeyboardEvent|FocusEvent)\]$/i.test(name))return '';
+    return name;
+  }
   function updateCardAppearanceOptions(preferredValue){
     const sel=$('cardAppearance');if(!sel)return;
-    const prev=preferredValue!==undefined?String(preferredValue||''):sel.value;
+    const prev=cleanAppearanceName(preferredValue!==undefined?preferredValue:sel.value);
     const characterId=$('cardCharacter')?.value||'';
     const character=characters.find(c=>c.id===characterId);
     sel.replaceChildren();
@@ -1266,8 +1294,8 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const cardTypes=cards
       .filter(card=>String(card.character_id||'')===String(characterId))
       .map(card=>card.card_data?.appearance);
-    const types=[...new Set([...profileTypes,...cardTypes]
-      .map(value=>String(value||'').trim()).filter(Boolean))];
+    const types=[...new Set([...profileTypes,...cardTypes,...pendingCardAppearanceTypes]
+      .map(cleanAppearanceName).filter(Boolean))];
     types.sort((a,b)=>a.localeCompare(b,'ja',{numeric:true}));
     types.forEach(type=>sel.add(new Option(type,type)));
 
@@ -1275,6 +1303,39 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     // from both the character's style list and the existing card records.
     if(prev&&!types.includes(prev))sel.add(new Option(prev+'（登録済み）',prev));
     sel.value=prev;
+  }
+  function addCardAppearanceType(){
+    const input=$('newCardAppearanceName');
+    const status=$('cardAppearanceAddStatus');
+    const value=String(input?.value||'').trim();
+    const characterId=$('cardCharacter')?.value||'';
+    const inlineName=$('newCharacterInline')?.value.trim()||'';
+    if(!value){if(status)status.textContent='追加するスタイル名を入力してください。';return;}
+    if(!characterId&&!inlineName){if(status)status.textContent='先にマイキャラを選択するか、新しいマイキャラ名を入力してください。';return;}
+    const character=characters.find(c=>c.id===characterId);
+    const existing=[...(Array.isArray(character?.character_data?.appearance_types)?character.character_data.appearance_types:[]),...cards.filter(c=>c.character_id===characterId).map(c=>c.card_data?.appearance),...pendingCardAppearanceTypes].map(cleanAppearanceName).filter(Boolean);
+    if(existing.includes(value)){if(status)status.textContent='このスタイル名は既に登録されています。候補から選択できます。';updateCardAppearanceOptions(value);input.value='';return;}
+    pendingCardAppearanceTypes.push(value);
+    updateCardAppearanceOptions(value);
+    input.value='';
+    if(status)status.textContent='「'+value+'」を追加しました。フレカを保存するとマイキャラのスタイルに登録されます。画像はマイキャラ編集から追加できます。';
+  }
+  $('addCardAppearanceName')?.addEventListener('click',addCardAppearanceType);
+  $('newCardAppearanceName')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addCardAppearanceType();}});
+
+  // 色欄は登録時の入力形式を維持し、検索時だけ複数色を個別の候補として扱う。
+  function splitCardColors(value){
+    return [...new Set(String(value||'').split(/[、,，]/).map(x=>x.trim()).filter(Boolean))];
+  }
+  function updateColorFilterOptions(){
+    const values=[...new Set(cards.flatMap(card=>splitCardColors(card.card_data?.color)))];
+    values.sort((a,b)=>a.localeCompare(b,'ja',{numeric:true}));
+    [['colorFilter','すべての色'],['manageCardColorFilter','すべての色'],['sharedColorFilter','すべての色']].forEach(([id,label])=>{
+      const select=$(id);if(!select)return;const old=select.value;select.replaceChildren();
+      const blank=document.createElement('option');blank.value='';blank.textContent=label;select.appendChild(blank);
+      values.forEach(value=>{const option=document.createElement('option');option.value=value;option.textContent=value;select.appendChild(option);});
+      select.value=values.includes(old)?old:'';
+    });
   }
   function updateAppearanceFilterOptions(){
     // Search filter options follow the currently selected character chip.
@@ -1301,7 +1362,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       searchSel.value=pairs.some(pair=>pair.value===old)?old:'';
     }
     // The management screen keeps its all-character style filter.
-    const values=[...new Set([...characters.flatMap(c=>Array.isArray(c.character_data?.appearance_types)?c.character_data.appearance_types:[]),...cards.map(card=>card.card_data?.appearance||'')].map(v=>String(v||'').trim()).filter(Boolean))];
+    const values=[...new Set([...characters.flatMap(c=>Array.isArray(c.character_data?.appearance_types)?c.character_data.appearance_types:[]),...cards.map(card=>card.card_data?.appearance||'')].map(cleanAppearanceName).filter(Boolean))];
     values.sort((a,b)=>a.localeCompare(b,'ja',{numeric:true}));
     const manageSel=$('manageCardAppearanceFilter');
     if(manageSel){const old=manageSel.value;manageSel.replaceChildren();const blank=document.createElement('option');blank.value='';blank.textContent='すべてのスタイル';manageSel.appendChild(blank);values.forEach(value=>{const option=document.createElement('option');option.value=value;option.textContent=value;manageSel.appendChild(option);});manageSel.value=values.includes(old)?old:'';}
@@ -1485,14 +1546,15 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const keyword=($('cardSearch')?.value||'').trim().toLocaleLowerCase();
     let appearanceFilter=null;
     try{const raw=$('appearanceFilter')?.value||'';appearanceFilter=raw?JSON.parse(raw):null;}catch{appearanceFilter=null;}
-    const seriesFilter=$('seriesFilter')?.value||'';
+    const seriesFilter=$('seriesFilter')?.value||'',colorFilter=$('colorFilter')?.value||'';
     const filtered=cards.filter(card=>{
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),characterName=character?.character_name||'';
       const fields=[card.card_name,d.color,d.appearance,d.series,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
       const matchesKeyword=!keyword||fields.some(x=>x.includes(keyword));
+      const matchesColor=!colorFilter||splitCardColors(d.color).includes(colorFilter);
       const matchesAppearance=!appearanceFilter||(String(d.appearance||'')===appearanceFilter[0]&&String(card.character_id||'')===String(appearanceFilter[1]||''));
       const matchesSeries=!seriesFilter||String(d.series||'')===seriesFilter;
-      return matchesKeyword&&matchesAppearance&&matchesSeries&&(activeCharacter==='all'||card.character_id===activeCharacter);
+      return matchesKeyword&&matchesColor&&matchesAppearance&&matchesSeries&&(activeCharacter==='all'||card.character_id===activeCharacter);
     });
     const sortedFiltered=sortCardsForDisplay(filtered,$('cardSort')?.value||'character');
     if(count)count.textContent=filtered.length+' 枚';
@@ -1523,11 +1585,11 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   }
   function renderManageCards(){
     const list=$('registeredCardsList');if(!list)return;list.replaceChildren();
-    const keyword=($('manageCardSearch')?.value||'').trim().toLocaleLowerCase(),appearance=($('manageCardAppearanceFilter')?.value||'').trim().toLocaleLowerCase(),series=$('manageCardSeriesFilter')?.value||'',characterId=$('manageCardCharacterFilter')?.value||'';
+    const keyword=($('manageCardSearch')?.value||'').trim().toLocaleLowerCase(),colorFilter=$('manageCardColorFilter')?.value||'',appearance=($('manageCardAppearanceFilter')?.value||'').trim().toLocaleLowerCase(),series=$('manageCardSeriesFilter')?.value||'',characterId=$('manageCardCharacterFilter')?.value||'';
     const filtered=cards.filter(card=>{
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),characterName=character?.character_name||'';
       const fields=[card.card_name,d.color,d.appearance,d.series,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
-      return (!keyword||fields.some(x=>x.includes(keyword)))&&(!appearance||String(d.appearance||'')===appearance)&&(!series||String(d.series||'')===series)&&(!characterId||card.character_id===characterId);
+      return (!keyword||fields.some(x=>x.includes(keyword)))&&(!colorFilter||splitCardColors(d.color).includes(colorFilter))&&(!appearance||String(d.appearance||'')===appearance)&&(!series||String(d.series||'')===series)&&(!characterId||card.character_id===characterId);
     });
     const count=$('manageCardCount');if(count)count.textContent=filtered.length+' / '+cards.length+' 枚';
     if(!currentUser){appendText(list,'p','ログインすると登録済みフレカが表示されます。','muted');return;}
@@ -1552,7 +1614,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(!client||!currentUser)return;
     try{
       cards=await fetchAllRows(()=>client.from('cards').select('id,card_name,card_data,character_id,is_public,created_at').eq('user_id',currentUser.id).order('created_at',{ascending:false}));
-      message('cardCount',String(cards.length));updateSeriesFilterOptions();updateAppearanceFilterOptions();renderCards();renderManageCards();
+      message('cardCount',String(cards.length));updateSeriesFilterOptions();updateColorFilterOptions();updateAppearanceFilterOptions();renderCards();renderManageCards();
     }catch(error){message('cardRegisterStatus','読み込みエラー：'+error.message);}
   }
   async function moveCharacterOrder(characterId,direction){
@@ -1765,11 +1827,12 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     }
     const keyword=($('sharedCardSearch')?.value||'').trim().toLocaleLowerCase();
     const appearanceFilter=($('sharedAppearanceFilter')?.value||'').trim().toLocaleLowerCase();
-    const seriesFilter=$('sharedSeriesFilter')?.value||'';
+    const seriesFilter=$('sharedSeriesFilter')?.value||'',colorFilter=$('sharedColorFilter')?.value||'';
     const visible=cards.filter(card=>{
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),characterName=character?.character_name||'';
       const fields=[card.card_name,d.color,d.appearance,d.series,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
       return (!keyword||fields.some(x=>x.includes(keyword)))
+        &&(!colorFilter||splitCardColors(d.color).includes(colorFilter))
         &&(!appearanceFilter||String(d.appearance||'').toLocaleLowerCase().includes(appearanceFilter))
         &&(!seriesFilter||String(d.series||'')===seriesFilter)
         &&(activeCharacter==='all'||card.character_id===activeCharacter);
@@ -2071,14 +2134,17 @@ $('signupBtn')?.addEventListener('click',()=>runSafely(signUp));
   $('registerModeManage')?.addEventListener('click',()=>setRegisterMode('manage'));
   $('cardSearch')?.addEventListener('input',renderCards);
   $('appearanceFilter')?.addEventListener('change',renderCards);
-  $('cardCharacter')?.addEventListener('change',updateCardAppearanceOptions);
+  $('colorFilter')?.addEventListener('change',renderCards);
+  $('cardCharacter')?.addEventListener('change',()=>{pendingCardAppearanceTypes=[];if($('cardAppearanceAddStatus'))$('cardAppearanceAddStatus').textContent='追加したスタイル名は、フレカ保存時に選択中のマイキャラへ登録されます。';updateCardAppearanceOptions();});
   $('seriesFilter')?.addEventListener('change',renderCards);
   $('cardSort')?.addEventListener('change',renderCards);
   $('sharedCardSort')?.addEventListener('change',renderSharedCards);
+  $('sharedColorFilter')?.addEventListener('change',renderSharedCards);
   ['sharedCardSearch','sharedAppearanceFilter'].forEach(id=>$(id)?.addEventListener('input',renderSharedCards));
   $('sharedSeriesFilter')?.addEventListener('change',renderSharedCards);
   $('manageCardSearch')?.addEventListener('input',renderManageCards);
   $('manageCardAppearanceFilter')?.addEventListener('change',renderManageCards);
+  $('manageCardColorFilter')?.addEventListener('change',renderManageCards);
   ['manageCardCharacterFilter','manageCardSeriesFilter'].forEach(id=>$(id)?.addEventListener('change',renderManageCards));
   $('copyShare')?.addEventListener('click',async()=>{
     if(!shareUrl)return message('shareStatus','共有URLがありません。プロフィール設定を確認してください。');
