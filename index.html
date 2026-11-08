@@ -244,6 +244,14 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
 .characterSheetTop.is-landscape .characterSheetCover img{width:100%!important;height:auto!important;max-height:360px!important;object-fit:contain!important}
 .characterSheetTop.is-landscape .characterSheetIntro{width:100%;min-height:0}
 .characterSheetTop.is-landscape .characterSheetIntroText{min-height:100px!important;flex:none!important}
+
+/* User settings */
+.settingsMenu button{width:100%;text-align:left;padding:13px 15px;border:1px solid var(--line);background:var(--theme-panel);color:var(--ink);box-shadow:none}
+#userSettings .panel{background:var(--theme-panel)}
+#userSettings [data-settings-page]{border-color:var(--theme-accent);background:var(--theme-panel)}
+#userSettings .danger{background:#fff0f3!important;color:#b83e59!important;border:1px solid #ffd4dd!important}
+#openUserSettings{flex:none}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -325,6 +333,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
 <header class="siteHeader">
   <div class="logo" aria-hidden="true">✧</div>
   <div class="brand"><small>MY FRIEND CARD COLLECTION</small><h1>アイプリ フレンドカード図鑑</h1></div>
+  <button id="openUserSettings" class="iconButton" type="button" aria-label="設定">⚙️</button>
 </header>
 <main>
   <section id="settings" class="panel hidden" aria-hidden="true">
@@ -387,6 +396,61 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       <button id="openSettings" class="secondary adminSettingsButton" type="button">Supabase接続設定</button>
     </details>
   </section>
+  <section id="userSettings" class="view hidden">
+    <div class="sectionHeading"><div><span class="eyebrow">APP SETTINGS</span><h2>設定</h2></div><button type="button" class="secondary smallButton" id="settingsBackHome">ホームへ戻る</button></div>
+    <section class="panel">
+      <h3>アカウント情報</h3>
+      <p class="hint">ログイン中のアカウント</p>
+      <p><strong>ユーザーID：</strong><span id="settingsAccountId">未ログイン</span></p>
+      <p><strong>アカウント状態：</strong><span id="settingsAccountState">未ログイン</span></p>
+    </section>
+    <section class="panel">
+      <h3>アプリについて</h3>
+      <div class="itemList settingsMenu">
+        <button type="button" class="secondary" data-settings-open="guide">使い方ガイド　›</button>
+        <button type="button" class="secondary" data-settings-open="terms">利用規約　›</button>
+        <button type="button" class="secondary" data-settings-open="privacy">プライバシーポリシー　›</button>
+        <button type="button" class="secondary" data-settings-open="about">このアプリについて　›</button>
+      </div>
+    </section>
+    <section class="panel" id="settingsGuide" data-settings-page hidden>
+      <div class="between"><h3>使い方ガイド</h3><button type="button" class="secondary smallButton" data-settings-close>戻る</button></div>
+      <p>ホームでマイキャラを登録し、フレカ登録からカード画像やQRコードなどを登録できます。</p>
+      <p>フレカ検索では登録したカードを検索・絞り込みできます。共有画面では公開設定や共有URLを確認できます。</p>
+      <p>大切なデータは、ホームのバックアップ機能で端末またはクラウドに保存してください。</p>
+    </section>
+    <section class="panel" id="settingsTerms" data-settings-page hidden>
+      <div class="between"><h3>利用規約</h3><button type="button" class="secondary smallButton" data-settings-close>戻る</button></div>
+      <p>本アプリは、アイプリのフレンドカードやマイキャラ情報を個人で整理・管理するためのツールです。</p>
+      <p>登録する画像・文章・QRコード等について、利用者は必要な権利や利用許諾を確認したうえで登録してください。第三者の権利を侵害する利用、サービス運営を妨げる利用は禁止します。</p>
+      <p>本アプリは予告なく内容の変更、提供の中断または終了を行う場合があります。利用者は必要に応じて自身でバックアップを行ってください。</p>
+    </section>
+    <section class="panel" id="settingsPrivacy" data-settings-page hidden>
+      <div class="between"><h3>プライバシーポリシー</h3><button type="button" class="secondary smallButton" data-settings-close>戻る</button></div>
+      <p>本アプリでは、アカウント識別情報、マイキャラ情報、フレンドカード情報、画像、QRコード、メモ、公開設定など、利用者が登録した情報を保存します。</p>
+      <p>登録データはSupabaseのデータベースおよびストレージに保存されます。公開設定や共有機能を利用した場合、設定や公開対象に応じて第三者が閲覧できる情報があります。公開前に内容を確認してください。</p>
+      <p>サービス提供に必要なインフラ事業者によるデータ処理が行われます。パスワードやSecret Keyなどの認証情報を他人に共有しないでください。</p>
+      <p>アカウント削除機能を利用すると、対象アカウントの登録データおよび認証アカウントの削除を要求します。バックアップ済みファイルや第三者が保存した情報までは回収できません。</p>
+    </section>
+    <section class="panel" id="settingsAbout" data-settings-page hidden>
+      <div class="between"><h3>このアプリについて</h3><button type="button" class="secondary smallButton" data-settings-close>戻る</button></div>
+      <p>アイプリ フレンドカード図鑑</p><p class="hint">フレンドカードとマイキャラをまとめて管理するための個人向けアプリです。</p>
+    </section>
+    <section class="panel" id="settingsDelete" data-settings-page hidden>
+      <div class="between"><h3>アカウント削除</h3><button type="button" class="secondary smallButton" data-settings-close>戻る</button></div>
+      <p class="hint">アカウントと登録データを削除します。この操作は取り消せません。必要なデータは事前にバックアップしてください。</p>
+      <label>ユーザーID<input id="deleteUsername" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20" placeholder="ログイン中のユーザーID" readonly></label>
+      <label>現在のパスワード<input id="deletePassword" type="password" autocomplete="current-password" maxlength="128" placeholder="パスワードを再入力"></label>
+      <label class="switchrow"><input id="deleteAgree" type="checkbox"> アカウントと登録データを削除することに同意します</label>
+      <button type="button" class="danger" id="deleteAccountBtn">アカウント削除へ進む</button>
+      <p id="deleteAccountStatus" class="hint" role="status" aria-live="polite"></p>
+    </section>
+    <section class="panel">
+      <h3>アカウント管理</h3>
+      <div class="buttonRow"><button type="button" class="danger" id="openDeleteAccount">アカウント削除</button><button type="button" class="secondary" id="settingsSignOut">ログアウト</button></div>
+    </section>
+  </section>
+
   <section id="search" class="view hidden">
     <div class="sectionHeading"><div><span class="eyebrow">MY FRIEND CARDS</span><h2>フレカ検索</h2></div><span class="pill">COLLECTION</span></div>
     <div id="characterChips" class="characterChips" aria-label="マイキャラで絞り込み"></div>
@@ -732,7 +796,13 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   function updateAccountUI() {
     const loggedIn = !!currentUser;
     $('authPanel')?.classList.toggle('hidden', loggedIn);
+    const accountId = currentUser?.email ? currentUser.email.split('@')[0] : '未ログイン';
+    message('settingsAccountId', accountId);
+    message('settingsAccountState', loggedIn ? 'ログイン中' : '未ログイン');
+    if ($('settingsSignOut')) $('settingsSignOut').disabled = !loggedIn;
+    if ($('openUserSettings')) $('openUserSettings').disabled = false;
     if (!loggedIn) {
+      if ($('deleteUsername')) $('deleteUsername').value = '';
       message('authStatus', client ? 'IDとパスワードでログインしてください。' : '接続設定を保存すると登録・ログインできます。');
       message('dbState', client ? '接続OK' : '未接続'); message('homeTitle','大切なフレンドカードを\nかわいくまとめよう。'); message('homeMessage','ログインしてフレカとマイキャラを管理しよう。');
       $('signOut')?.remove(); return;
@@ -1593,6 +1663,73 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     }catch(error){backupStatus('クラウド復元失敗：'+error.message);}
   }
 
+  function openSettingsPage(page) {
+    document.querySelectorAll('#userSettings [data-settings-page]').forEach(el => el.hidden = true);
+    const target = $('settings' + page.charAt(0).toUpperCase() + page.slice(1));
+    if (target) target.hidden = false;
+    if (page === 'delete') {
+      // Always bind the displayed ID to the account that is currently signed in.
+      // readonly + autocomplete=off prevents Safari from substituting an older saved ID.
+      const input = $('deleteUsername');
+      if (input) input.value = currentUser?.email ? currentUser.email.split('@')[0] : '';
+    }
+    window.scrollTo({top:0,behavior:'auto'});
+  }
+  async function requestAccountDeletion() {
+    if (!client || !currentUser) throw new Error('ログインしてください。');
+    const username = $('deleteUsername').value.trim();
+    const password = $('deletePassword').value;
+    const signedInUsername = currentUser.email ? currentUser.email.split('@')[0] : '';
+    if (!validUsername(signedInUsername) || username !== signedInUsername) {
+      throw new Error('ログイン中のユーザーIDを確認できません。いったんログアウトして再ログインしてください。');
+    }
+    if (!validUsername(username)) throw new Error('ユーザーIDは半角英数字と _ の3〜20文字で入力してください。');
+    if (!password) throw new Error('現在のパスワードを入力してください。');
+    if (!$('deleteAgree').checked) throw new Error('削除への同意にチェックしてください。');
+    if (!confirm('本当にアカウントと登録データを削除しますか？\nこの操作は取り消せません。')) return;
+    const {data:sessionData,error:sessionError}=await client.auth.getSession();
+    if(sessionError) throw sessionError;
+    if(!sessionData.session?.access_token) throw new Error('ログインセッションを確認できません。再ログインしてください。');
+    message('deleteAccountStatus','本人確認と削除処理を実行しています…');
+    $('deleteAccountBtn').disabled=true;
+    try {
+      // Supabase Functions invoke automatically attaches the current session access token
+      // and publishable API key. No manual token copying is required.
+      const {data:result,error:functionError}=await client.functions.invoke('delete-account-v2',{body:{username,password}});
+      if(functionError){
+        let detail='';
+        try{
+          const response=functionError.context;
+          if(response && typeof response.clone==='function'){
+            const payload=await response.clone().json();
+            detail=payload?.error||payload?.message||'';
+          }
+        }catch{}
+        throw new Error(detail||functionError.message||'削除処理との通信に失敗しました。');
+      }
+      if(!result?.success) throw new Error(result?.error||'削除処理に失敗しました。');
+      message('deleteAccountStatus','削除が完了しました。ログアウトしています…');
+      cards=[];characters=[];
+      try{await client.auth.signOut({scope:'local'});}catch(e){console.warn('Local sign out:',e);}
+      currentUser=null;
+      updateAccountUI();
+      message('authStatus','アカウントと登録データを削除しました。');
+      $('deletePassword').value='';$('deleteUsername').value='';$('deleteAgree').checked=false;
+      showView('home');
+      alert('アカウントと登録データを削除しました。');
+    } finally {
+      if($('deleteAccountBtn')) $('deleteAccountBtn').disabled=false;
+    }
+  }
+
+  $('openUserSettings')?.addEventListener('click',()=>{openSettingsPage('');showView('userSettings');});
+  $('settingsBackHome')?.addEventListener('click',()=>showView('home'));
+  document.querySelectorAll('[data-settings-open]').forEach(btn=>btn.addEventListener('click',()=>openSettingsPage(btn.dataset.settingsOpen)));
+  document.querySelectorAll('[data-settings-close]').forEach(btn=>btn.addEventListener('click',()=>openSettingsPage('')));
+  $('openDeleteAccount')?.addEventListener('click',()=>openSettingsPage('delete'));
+  $('settingsSignOut')?.addEventListener('click',()=>runSafely(signOut));
+  $('deleteAccountBtn')?.addEventListener('click',async()=>{try{await requestAccountDeletion();}catch(error){message('deleteAccountStatus','削除できませんでした：'+(error?.message||error));console.error(error);}});
+
   $('downloadBackup')?.addEventListener('click',exportLocalBackup);
   $('cloudBackup')?.addEventListener('click',()=>saveCloudBackup(true).catch(error=>backupStatus('クラウド保存失敗：'+error.message)));
   $('restoreBackup')?.addEventListener('click',restoreLocalBackup);
@@ -1612,10 +1749,6 @@ $('signupBtn')?.addEventListener('click',()=>runSafely(signUp));
   $('appearanceFilter')?.addEventListener('input',renderCards);
   $('cardCharacter')?.addEventListener('change',updateCardAppearanceOptions);
   $('seriesFilter')?.addEventListener('change',renderCards);
-  // Always start both catalogue views in My Character order on a fresh app load.
-  // User can still choose another order manually during the session.
-  if($('cardSort')) $('cardSort').value='character';
-  if($('sharedCardSort')) $('sharedCardSort').value='character';
   $('cardSort')?.addEventListener('change',renderCards);
   $('sharedCardSort')?.addEventListener('change',renderSharedCards);
   ['sharedCardSearch','sharedAppearanceFilter'].forEach(id=>$(id)?.addEventListener('input',renderSharedCards));
