@@ -255,6 +255,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
 .sharedBottomTabs{position:sticky;bottom:10px;z-index:20;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;margin:18px -4px 8px;border:1px solid var(--line);border-radius:22px;background:rgba(255,255,255,.94);box-shadow:0 8px 24px rgba(50,100,130,.18);backdrop-filter:blur(12px)}
 .sharedBottomTabs button{min-height:54px;border:1px solid var(--line);border-radius:16px;background:var(--soft);color:var(--deep);font-weight:900;font-size:14px}
@@ -454,7 +455,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         <li>必要に応じて、色、マイキャラ、マイキャラをこの場で新規登録、マイキャラのスタイル、コーデの弾数・シリーズ、メモを入力します。</li>
         <li>写真の向きを「縦向き」または「横向き」から選びます。</li>
         <li>「コーデを着たマイキャラの写真」から写真を、「フレンドコード（QRコード）の画像」からQRコード画像を選びます。2種類の画像は別々に登録されます。</li>
-        <li>画像選択後に切り取り画面が表示された場合は、画像を指で動かして位置を調整し、2本指で拡大・縮小します。QRコードは全体が入るように調整してください。</li>
+        <li>画像選択後に切り取り画面が表示されます。QRコード画像は自動検知して切り抜き位置を合わせます。位置がずれている場合は、画像を指で動かし、2本指で拡大・縮小して微調整してください。自動検知できない場合は手動で調整します。</li>
         <li>共有ページに載せたい場合は「このフレカを共有ページに公開する」にチェックを入れます。公開しない場合はチェックを外します。</li>
         <li>「フレカを登録」を押して保存します。</li>
       </ol>
@@ -1082,6 +1083,53 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(cropPointers.size===1)startCropGesture();else if(cropPointers.size>=2)startCropGesture();else cropGesture=null;
   }
   cropCanvas.addEventListener('pointerup',endCropPointer);cropCanvas.addEventListener('pointercancel',endCropPointer);cropCanvas.addEventListener('lostpointercapture',endCropPointer);
+  // QRコードを画像内から検出し、検出できた場合は自動で中央に合わせる。
+  // 検出に失敗した場合も従来どおり手動で位置・倍率を調整できる。
+  function detectQrBounds(img){
+    try{
+      if(typeof window.jsQR!=='function')return null;
+      const maxSide=1400,scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
+      const scan=document.createElement('canvas');
+      scan.width=Math.max(1,Math.round(img.naturalWidth*scale));
+      scan.height=Math.max(1,Math.round(img.naturalHeight*scale));
+      const ctx=scan.getContext('2d',{willReadFrequently:true});
+      ctx.drawImage(img,0,0,scan.width,scan.height);
+      const pixels=ctx.getImageData(0,0,scan.width,scan.height);
+      const code=window.jsQR(pixels.data,pixels.width,pixels.height,{inversionAttempts:'attemptBoth'});
+      if(!code?.location)return null;
+      const points=[
+        code.location.topLeftCorner,code.location.topRightCorner,
+        code.location.bottomRightCorner,code.location.bottomLeftCorner
+      ];
+      const xs=points.map(p=>p.x/scale),ys=points.map(p=>p.y/scale);
+      const left=Math.min(...xs),right=Math.max(...xs),top=Math.min(...ys),bottom=Math.max(...ys);
+      if(!Number.isFinite(left+right+top+bottom)||right<=left||bottom<=top)return null;
+      return {x:left,y:top,width:right-left,height:bottom-top};
+    }catch(error){
+      console.warn('QRコードの自動検知に失敗しました。手動調整に切り替えます。',error);
+      return null;
+    }
+  }
+  function centerCropOnQr(bounds){
+    if(!cropState||!bounds)return false;
+    const {img}=cropState,canvas=cropCanvas;
+    const baseScale=Math.max(canvas.width/img.naturalWidth,canvas.height/img.naturalHeight);
+    const qrSize=Math.max(bounds.width,bounds.height);
+    // QRの周囲に約18%の余白を残して、読み取りやすい大きさにする。
+    const desiredScale=Math.min(canvas.width,canvas.height)/(qrSize*1.36);
+    const zoom=clamp(desiredScale/baseScale,1,4);
+    const scale=baseScale*zoom;
+    const drawW=img.naturalWidth*scale,drawH=img.naturalHeight*scale;
+    const qrCenterX=(bounds.x+bounds.width/2)*scale;
+    const qrCenterY=(bounds.y+bounds.height/2)*scale;
+    const centeredX=(canvas.width-drawW)/2,centeredY=(canvas.height-drawH)/2;
+    cropState.zoom=zoom;
+    cropState.panX=canvas.width/2-qrCenterX-centeredX;
+    cropState.panY=canvas.height/2-qrCenterY-centeredY;
+    // Match the cropper's image-boundary limits before drawing.
+    cropMetrics();
+    return true;
+  }
   function openCropper(file,input){
     const reader=new FileReader();
     reader.onload=()=>{
@@ -1094,7 +1142,16 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         cropState={img,file,input,ratio,zoom:1,panX:0,panY:0};
         cropPointers.clear();cropGesture=null;
         $('cropTitle').textContent=isQr?'QRコード画像を切り取る':'コーデ写真を切り取る';
-        $('cropHelp').textContent=isQr?'画像を指で動かし、2本指で拡大・縮小してQRコード全体を合わせてね。':'画像を指で動かし、2本指で拡大・縮小してマイキャラを合わせてね。';
+        $('cropHelp').textContent=isQr?'QRコードを自動検知します。位置がずれていたら指で動かし、2本指で調整してね。':'画像を指で動かし、2本指で拡大・縮小してマイキャラを合わせてね。';
+        if(isQr){
+          const bounds=detectQrBounds(img);
+          if(bounds){
+            centerCropOnQr(bounds);
+            $('cropHelp').textContent='QRコードを自動検知して切り抜き位置を合わせました。必要なら指で微調整してね。';
+          }else{
+            $('cropHelp').textContent='QRコードを自動検知できませんでした。画像を指で動かし、2本指で拡大・縮小して全体を合わせてね。';
+          }
+        }
         $('cropModal').classList.remove('hidden');drawCropPreview();
       };
       img.onerror=()=>message('cardRegisterStatus','画像を読み込めませんでした。別の画像を選んでください。');
@@ -1420,19 +1477,13 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const visibility=document.createElement('label');visibility.className='switchrow cardVisibilityToggle';const check=document.createElement('input');check.type='checkbox';check.checked=card.is_public!==false;check.addEventListener('change',()=>setCardVisibility(card,check.checked,check));visibility.append(check,document.createTextNode('共有ページに公開'));info.appendChild(visibility);
       const actions=document.createElement('div');actions.className='manageActions';
       const edit=document.createElement('button');edit.className='secondary';edit.textContent='編集';edit.addEventListener('click',()=>beginEditCard(card));
-      const profileEdit=document.createElement('button');profileEdit.className='secondary';profileEdit.textContent='図鑑情報を編集';profileEdit.addEventListener('click',()=>{
-        const intro=prompt('キャラ紹介',character.character_data?.intro||'');if(intro===null)return;
-        const appearance=prompt('スタイル・見た目のメモ',character.character_data?.appearance_note||'');if(appearance===null)return;
-        const publicValue=confirm('このキャラを共有ページに公開しますか？\nOK：公開 / キャンセル：非公開');
-        runSafely(async()=>{const {error}=await client.from('my_characters').update({character_data:{...(character.character_data||{}),intro:intro.trim(),appearance_note:appearance.trim(),is_public:publicValue}}).eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;scheduleCloudBackup();await loadCharacters();});
-      });
       const del=document.createElement('button');del.className='danger';del.textContent='削除';del.addEventListener('click',()=>runSafely(async()=>{
         if(!confirm('「'+card.card_name+'」を削除しますか？'))return;
         const paths=[d.photo_path,d.qr_path].filter(Boolean);if(paths.length){const {error}=await client.storage.from(BUCKET).remove(paths);if(error)console.warn(error.message);}
         const {error}=await client.from('cards').delete().eq('id',card.id).eq('user_id',currentUser.id);if(error)throw error;
         if(editingCardId===card.id)resetCardForm();message('cardRegisterStatus','フレカを削除しました。');scheduleCloudBackup();await loadCards();
       }));
-      actions.append(edit,profileEdit,del);item.append(info,details,actions);list.appendChild(item);
+      actions.append(edit);actions.append(del);item.append(info,actions);list.appendChild(item);
     });
   }
   async function loadCards(){
