@@ -407,6 +407,26 @@ body.user-settings-open .tabs{visibility:hidden!important;pointer-events:none!im
 }
 </style>
 
+
+<style>
+/* Final alignment correction for the header gear control. */
+#openUserSettings{
+  box-sizing:border-box!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:center!important;
+  padding:0!important;
+  margin:0!important;
+  line-height:1!important;
+  text-align:center!important;
+  text-indent:0!important;
+  font-family:"Arial Unicode MS",Arial,sans-serif!important;
+  font-size:28px!important;
+}
+#openUserSettings::first-letter{line-height:1}
+</style>
+
 </head>
 <body>
 <header class="siteHeader">
@@ -1753,11 +1773,31 @@ $('signupBtn')?.addEventListener('click',()=>runSafely(signUp));
     userSettingsMenu?.classList.remove('hidden');
     userSettingsPage?.classList.add('hidden');
   }
-  function showUserSettingsPage(key){
+  async function showUserSettingsPage(key){
     const loggedIn=!!currentUser;
-    const userId=currentUser?.id||'未ログイン';
+    let loginId='';
+    if(loggedIn){
+      // profiles.username is the canonical user-facing login ID.
+      try{
+        const {data:profile,error:profileError}=await client
+          .from('profiles')
+          .select('username')
+          .eq('id',currentUser.id)
+          .maybeSingle();
+        if(!profileError && profile?.username) loginId=String(profile.username);
+      }catch(error){
+        console.warn('Could not load profiles.username for account settings',error);
+      }
+      // Fallback only for older accounts if the profile row is unavailable.
+      if(!loginId){
+        const email=(currentUser?.email||'');
+        const suffix='@users.aipri-friendcardbook.invalid';
+        if(email.toLowerCase().endsWith(suffix)) loginId=email.slice(0,-suffix.length);
+      }
+    }
+    const safeLoginId=loginId.replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     const pages={
-      account:`<h3>アカウント情報</h3><div class="settingsInfoCard"><strong>ログイン状態</strong><p>${loggedIn?'ログイン中':'未ログイン'}</p><strong>ユーザーID（内部識別子）</strong><p>${userId}</p><p class="settingsNotice">ユーザーID・プロフィール情報の表示内容は、現在の登録状態に基づきます。</p></div>`,
+      account:`<h3>アカウント情報</h3><div class="settingsInfoCard"><strong>ログイン状態</strong><p>${loggedIn?'ログイン中':'未ログイン'}</p><strong>ユーザーID</strong><p>${safeLoginId||'取得できません'}</p><p class="settingsNotice">ログイン時に入力するユーザーIDです。</p></div>`,
       password:`<h3>パスワード変更</h3>${loggedIn?`<p>新しいパスワードを入力してください。8文字以上を設定してください。</p><label>新しいパスワード<input id="settingsNewPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label><label>新しいパスワード（確認）<input id="settingsConfirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label><button type="button" class="settingsAction" id="settingsChangePassword">パスワードを変更</button><p id="settingsPasswordStatus" role="status"></p>`:'<p>パスワードを変更するにはログインしてください。</p>'}`,
       guide:`<h3>使い方ガイド</h3><div class="settingsInfoCard"><strong>1. マイキャラを登録</strong><p>ホームからマイキャラを登録します。登録したマイキャラはマイキャラ図鑑で確認できます。</p></div><div class="settingsInfoCard"><strong>2. フレカを登録</strong><p>「フレカ登録」からカード情報や画像、QRコードを登録します。</p></div><div class="settingsInfoCard"><strong>3. 検索・整理</strong><p>「フレカ検索」で登録したカードを検索できます。</p></div><div class="settingsInfoCard"><strong>4. 共有</strong><p>共有画面で公開設定を確認してください。公開設定や各データの公開状態によって、他の人に表示される内容が変わります。</p></div><div class="settingsInfoCard"><strong>5. バックアップ</strong><p>ホームのバックアップ機能を利用し、大切なデータを定期的に保存してください。</p></div>`,
       terms:`<h3>利用規約</h3><p>本アプリは、アイプリのフレンドカードおよびマイキャラ情報を個人で整理・管理するためのツールです。</p><ul><li>登録する画像・文章等は、利用者自身が適切な権利・利用許諾を確認したうえで使用してください。</li><li>他者への嫌がらせ、権利侵害、不正アクセスその他不適切な目的での利用を禁止します。</li><li>サービスの内容は、必要に応じて変更または停止する場合があります。</li><li>データのバックアップは利用者自身でも行ってください。</li></ul><p class="settingsNotice">この規約はアプリ利用上の基本事項を示すもので、個別の法的助言を行うものではありません。</p>`,
