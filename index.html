@@ -1477,19 +1477,13 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const visibility=document.createElement('label');visibility.className='switchrow cardVisibilityToggle';const check=document.createElement('input');check.type='checkbox';check.checked=card.is_public!==false;check.addEventListener('change',()=>setCardVisibility(card,check.checked,check));visibility.append(check,document.createTextNode('共有ページに公開'));info.appendChild(visibility);
       const actions=document.createElement('div');actions.className='manageActions';
       const edit=document.createElement('button');edit.className='secondary';edit.textContent='編集';edit.addEventListener('click',()=>beginEditCard(card));
-      const profileEdit=document.createElement('button');profileEdit.className='secondary';profileEdit.textContent='図鑑情報を編集';profileEdit.addEventListener('click',()=>{
-        const intro=prompt('キャラ紹介',character.character_data?.intro||'');if(intro===null)return;
-        const appearance=prompt('スタイル・見た目のメモ',character.character_data?.appearance_note||'');if(appearance===null)return;
-        const publicValue=confirm('このキャラを共有ページに公開しますか？\nOK：公開 / キャンセル：非公開');
-        runSafely(async()=>{const {error}=await client.from('my_characters').update({character_data:{...(character.character_data||{}),intro:intro.trim(),appearance_note:appearance.trim(),is_public:publicValue}}).eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;scheduleCloudBackup();await loadCharacters();});
-      });
       const del=document.createElement('button');del.className='danger';del.textContent='削除';del.addEventListener('click',()=>runSafely(async()=>{
         if(!confirm('「'+card.card_name+'」を削除しますか？'))return;
         const paths=[d.photo_path,d.qr_path].filter(Boolean);if(paths.length){const {error}=await client.storage.from(BUCKET).remove(paths);if(error)console.warn(error.message);}
         const {error}=await client.from('cards').delete().eq('id',card.id).eq('user_id',currentUser.id);if(error)throw error;
         if(editingCardId===card.id)resetCardForm();message('cardRegisterStatus','フレカを削除しました。');scheduleCloudBackup();await loadCards();
       }));
-      actions.append(edit);if(character)actions.append(profileEdit);actions.append(del);item.append(info,actions);list.appendChild(item);
+      actions.append(edit);actions.append(del);item.append(info,actions);list.appendChild(item);
     });
   }
   async function loadCards(){
