@@ -1265,16 +1265,34 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     sel.value=prev;
   }
   function updateAppearanceFilterOptions(){
-    const characterStyles=characters.flatMap(c=>Array.isArray(c.character_data?.appearance_types)?c.character_data.appearance_types:[]);
-    const cardStyles=cards.map(card=>card.card_data?.appearance||'');
-    const values=[...new Set([...characterStyles,...cardStyles].map(v=>String(v||'').trim()).filter(Boolean))];
+    // Search filter options follow the currently selected character chip.
+    // In "all characters" mode, distinguish identical style names by character.
+    const searchSel=$('appearanceFilter');
+    if(searchSel){
+      const old=searchSel.value;searchSel.replaceChildren();
+      const blank=document.createElement('option');blank.value='';blank.textContent='すべてのスタイル';searchSel.appendChild(blank);
+      const pairs=[];
+      const addPair=(style,characterId,characterName)=>{
+        const name=String(style||'').trim();if(!name)return;
+        const key=JSON.stringify([name,characterId||'']);
+        if(!pairs.some(x=>x.value===key))pairs.push({value:key,name,characterId:characterId||'',characterName:characterName||''});
+      };
+      const scopedCharacters=activeCharacter==='all'?characters:characters.filter(c=>c.id===activeCharacter);
+      scopedCharacters.forEach(c=>{
+        (Array.isArray(c.character_data?.appearance_types)?c.character_data.appearance_types:[]).forEach(style=>addPair(style,c.id,c.character_name));
+        cards.filter(card=>card.character_id===c.id).forEach(card=>addPair(card.card_data?.appearance,c.id,c.character_name));
+      });
+      // Preserve styles on cards that have no linked My Character.
+      if(activeCharacter==='all')cards.filter(card=>!card.character_id).forEach(card=>addPair(card.card_data?.appearance,'',''));
+      pairs.sort((a,b)=>a.name.localeCompare(b.name,'ja',{numeric:true})||a.characterName.localeCompare(b.characterName,'ja'));
+      pairs.forEach(pair=>{const option=document.createElement('option');option.value=pair.value;option.textContent=activeCharacter==='all'&&pair.characterName?`${pair.name}（${pair.characterName}）`:pair.name;searchSel.appendChild(option);});
+      searchSel.value=pairs.some(pair=>pair.value===old)?old:'';
+    }
+    // The management screen keeps its all-character style filter.
+    const values=[...new Set([...characters.flatMap(c=>Array.isArray(c.character_data?.appearance_types)?c.character_data.appearance_types:[]),...cards.map(card=>card.card_data?.appearance||'')].map(v=>String(v||'').trim()).filter(Boolean))];
     values.sort((a,b)=>a.localeCompare(b,'ja',{numeric:true}));
-    ['appearanceFilter','manageCardAppearanceFilter'].forEach(id=>{
-      const sel=$(id);if(!sel)return;const old=sel.value;sel.replaceChildren();
-      const blank=document.createElement('option');blank.value='';blank.textContent='すべてのスタイル';sel.appendChild(blank);
-      values.forEach(value=>{const o=document.createElement('option');o.value=value;o.textContent=value;sel.appendChild(o);});
-      sel.value=values.includes(old)?old:'';
-    });
+    const manageSel=$('manageCardAppearanceFilter');
+    if(manageSel){const old=manageSel.value;manageSel.replaceChildren();const blank=document.createElement('option');blank.value='';blank.textContent='すべてのスタイル';manageSel.appendChild(blank);values.forEach(value=>{const option=document.createElement('option');option.value=value;option.textContent=value;manageSel.appendChild(option);});manageSel.value=values.includes(old)?old:'';}
   }
   function updateManageFilterOptions(){
     const selector=$('manageCardCharacterFilter');if(!selector)return;const old=selector.value;selector.replaceChildren();
@@ -1360,8 +1378,8 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       container.replaceChildren();
       if(!currentUser){const p=document.createElement('p');p.className='muted';p.textContent='ログインするとマイキャラが表示されます。';container.appendChild(p);return;}
       if(index===0){
-        const all=document.createElement('button');all.textContent='全マイキャラ';all.classList.toggle('active',activeCharacter==='all');all.addEventListener('click',()=>{activeCharacter='all';renderCharacterChips();renderCards();});container.appendChild(all);
-        characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);b.addEventListener('click',()=>{activeCharacter=c.id;renderCharacterChips();renderCards();});container.appendChild(b);});
+        const all=document.createElement('button');all.textContent='全マイキャラ';all.classList.toggle('active',activeCharacter==='all');all.addEventListener('click',()=>{activeCharacter='all';updateAppearanceFilterOptions();renderCharacterChips();renderCards();});container.appendChild(all);
+        characters.forEach(c=>{const b=document.createElement('button');b.textContent=c.character_name;b.classList.toggle('active',activeCharacter===c.id);b.addEventListener('click',()=>{activeCharacter=c.id;updateAppearanceFilterOptions();renderCharacterChips();renderCards();});container.appendChild(b);});
       }else{
         if(!characters.length){const p=document.createElement('p');p.className='muted';p.textContent='マイキャラはまだ登録されていません。';container.appendChild(p);}
         else{
@@ -1453,13 +1471,14 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const list=$('cardsList');if(!list)return;list.replaceChildren();const count=$('searchResultCount');
     if(!currentUser){if(count)count.textContent='— 枚';appendText(list,'p','ログインするとフレカを表示できます。','muted');return;}
     const keyword=($('cardSearch')?.value||'').trim().toLocaleLowerCase();
-    const appearanceFilter=($('appearanceFilter')?.value||'').trim().toLocaleLowerCase();
+    let appearanceFilter=null;
+    try{const raw=$('appearanceFilter')?.value||'';appearanceFilter=raw?JSON.parse(raw):null;}catch{appearanceFilter=null;}
     const seriesFilter=$('seriesFilter')?.value||'';
     const filtered=cards.filter(card=>{
       const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id),characterName=character?.character_name||'';
       const fields=[card.card_name,d.color,d.appearance,d.series,d.brand,d.memo,characterName].map(x=>String(x||'').toLocaleLowerCase());
       const matchesKeyword=!keyword||fields.some(x=>x.includes(keyword));
-      const matchesAppearance=!appearanceFilter||String(d.appearance||'')===appearanceFilter;
+      const matchesAppearance=!appearanceFilter||(String(d.appearance||'')===appearanceFilter[0]&&String(card.character_id||'')===String(appearanceFilter[1]||''));
       const matchesSeries=!seriesFilter||String(d.series||'')===seriesFilter;
       return matchesKeyword&&matchesAppearance&&matchesSeries&&(activeCharacter==='all'||card.character_id===activeCharacter);
     });
