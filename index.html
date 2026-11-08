@@ -1685,7 +1685,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     try {
       // Supabase Functions invoke automatically attaches the current session access token
       // and publishable API key. No manual token copying is required.
-      const {data:result,error:functionError}=await client.functions.invoke('delete-account',{body:{username,password}});
+      const {data:result,error:functionError}=await client.functions.invoke('delete-account-v2',{body:{username,password}});
       if(functionError){
         let detail='';
         try{
