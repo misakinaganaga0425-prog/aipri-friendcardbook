@@ -1679,19 +1679,25 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if (!confirm('本当にアカウントと登録データを削除しますか？\nこの操作は取り消せません。')) return;
     const {data:sessionData,error:sessionError}=await client.auth.getSession();
     if(sessionError) throw sessionError;
-    const accessToken=sessionData.session?.access_token;
-    if(!accessToken) throw new Error('ログインセッションを確認できません。再ログインしてください。');
+    if(!sessionData.session?.access_token) throw new Error('ログインセッションを確認できません。再ログインしてください。');
     message('deleteAccountStatus','本人確認と削除処理を実行しています…');
     $('deleteAccountBtn').disabled=true;
     try {
-      const response=await fetch(SUPABASE_URL.replace(/\/+$/,'')+'/functions/v1/delete-account',{
-        method:'POST',
-        headers:{'Content-Type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+accessToken},
-        body:JSON.stringify({username,password})
-      });
-      let result={};
-      try{result=await response.json();}catch{}
-      if(!response.ok || !result.success) throw new Error(result.error||('削除処理に失敗しました（HTTP '+response.status+'）。'));
+      // Supabase Functions invoke automatically attaches the current session access token
+      // and publishable API key. No manual token copying is required.
+      const {data:result,error:functionError}=await client.functions.invoke('delete-account',{body:{username,password}});
+      if(functionError){
+        let detail='';
+        try{
+          const response=functionError.context;
+          if(response && typeof response.clone==='function'){
+            const payload=await response.clone().json();
+            detail=payload?.error||payload?.message||'';
+          }
+        }catch{}
+        throw new Error(detail||functionError.message||'削除処理との通信に失敗しました。');
+      }
+      if(!result?.success) throw new Error(result?.error||'削除処理に失敗しました。');
       message('deleteAccountStatus','削除が完了しました。ログアウトしています…');
       cards=[];characters=[];
       try{await client.auth.signOut({scope:'local'});}catch(e){console.warn('Local sign out:',e);}
