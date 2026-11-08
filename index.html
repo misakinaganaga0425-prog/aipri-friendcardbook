@@ -1255,13 +1255,25 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   function updateCardAppearanceOptions(preferredValue){
     const sel=$('cardAppearance');if(!sel)return;
     const prev=preferredValue!==undefined?String(preferredValue||''):sel.value;
-    const character=characters.find(c=>c.id===$('cardCharacter')?.value);
+    const characterId=$('cardCharacter')?.value||'';
+    const character=characters.find(c=>c.id===characterId);
     sel.replaceChildren();
     const blank=document.createElement('option');blank.value='';blank.textContent='スタイルを選択（任意）';sel.appendChild(blank);
-    const d=character?.character_data||{},types=Array.isArray(d.appearance_types)?d.appearance_types:[];
-    types.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o);});
-    // Keep an already-saved style selectable even if it was later removed from the character's style list.
-    if(prev&&!types.includes(prev)){const o=document.createElement('option');o.value=prev;o.textContent=prev+'（登録済み）';sel.appendChild(o);}
+
+    // Use the same source as the search filter: character profile styles plus
+    // styles already used by that character's registered friend cards.
+    const profileTypes=Array.isArray(character?.character_data?.appearance_types)?character.character_data.appearance_types:[];
+    const cardTypes=cards
+      .filter(card=>String(card.character_id||'')===String(characterId))
+      .map(card=>card.card_data?.appearance);
+    const types=[...new Set([...profileTypes,...cardTypes]
+      .map(value=>String(value||'').trim()).filter(Boolean))];
+    types.sort((a,b)=>a.localeCompare(b,'ja',{numeric:true}));
+    types.forEach(type=>sel.add(new Option(type,type)));
+
+    // Keep an already-saved style selectable even if it was later removed
+    // from both the character's style list and the existing card records.
+    if(prev&&!types.includes(prev))sel.add(new Option(prev+'（登録済み）',prev));
     sel.value=prev;
   }
   function updateAppearanceFilterOptions(){
