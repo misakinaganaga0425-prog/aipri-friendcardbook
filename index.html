@@ -135,6 +135,18 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 .cropCanvasWrap canvas:active { cursor:grabbing; }
 @media(max-width:360px){ #cardsList{gap:7px}.catalogueCard{padding:7px}.catalogueCard .cardBottom{gap:4px} }
 
+
+/* Friend-card detail viewer with QR enlargement controls */
+.cardDetailModal{position:fixed;inset:0;z-index:1100;background:rgba(17,43,58,.72);display:flex;align-items:center;justify-content:center;padding:14px}
+.cardDetailDialog{width:min(100%,560px);max-height:92dvh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:0 18px 60px #16394d55}
+.cardDetailHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.cardDetailHeader h2{margin:0;overflow-wrap:anywhere}.cardDetailClose{flex:none;padding:7px 12px}
+.cardDetailPhoto{display:block;width:100%;max-height:42dvh;object-fit:contain;background:#f4fbff;border:1px solid var(--line);border-radius:14px;margin:12px auto}
+.cardDetailQrWrap{overflow:auto;max-height:48dvh;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px;touch-action:pan-x pan-y}
+.cardDetailQr{display:block;width:min(100%,340px);height:auto;object-fit:contain;transform-origin:center;transition:transform .12s ease;image-rendering:auto}
+.cardDetailZoom{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:8px 0}.cardDetailZoom button{min-width:46px;padding:8px 12px}.cardDetailZoom span{font-size:12px;color:#66899b;min-width:42px;text-align:center}
+.cardDetailFields{display:grid;grid-template-columns:100px minmax(0,1fr);gap:7px 10px;margin:12px 0}.cardDetailFields dt{font-size:12px;color:#7194a5;font-weight:700}.cardDetailFields dd{margin:0;overflow-wrap:anywhere;font-size:13px;white-space:pre-wrap}
+.catalogueCard .photoStage{cursor:zoom-in}
+
 .cropModal{position:fixed;inset:0;z-index:1000;background:rgba(17,43,58,.68);display:flex;align-items:center;justify-content:center;padding:16px}.cropDialog{width:min(100%,520px);max-height:92dvh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:0 18px 60px #16394d55}.cropDialog h2{font-size:20px}.cropCanvasWrap{display:flex;justify-content:center;background:#eef8fc;border-radius:16px;padding:10px;overflow:hidden}.cropCanvasWrap canvas{display:block;max-width:100%;max-height:48dvh;object-fit:contain;border-radius:8px}.cropControls label{margin:10px 0}.cropControls input[type=range]{width:100%;accent-color:#55b9e5}.cropActions{display:flex;gap:8px;position:sticky;bottom:0;background:#fff;padding-top:10px}.cropActions button{flex:1}
 .catalogueCard{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding:14px;border:1px solid #cce8f5;border-radius:20px;background:#fbfeff;min-width:0}.catalogueCard .cardTitle{font-size:clamp(18px,4.5vw,24px);line-height:1.35;text-align:center;overflow-wrap:anywhere;margin:0;padding:5px 42px 7px}.catalogueCard .cardDelete{position:absolute;right:10px;top:10px;z-index:1}.photoStage{width:min(100%,320px);margin:0 auto;display:grid;place-items:center;overflow:hidden;border:1px solid var(--line);border-radius:16px;background:#f1faff}.photoStage img{width:100%;height:100%;object-fit:contain}.photoPlaceholder{padding:12px;color:#7898a8;text-align:center;font-size:12px}.cardBottom{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center}.qrStage{display:grid;place-items:center;min-width:0;aspect-ratio:1/1;overflow:hidden;background:#fff;border:1px solid var(--line);border-radius:14px}.qrStage img{width:100%;height:100%;object-fit:contain}.cardDetails{min-width:0;overflow-wrap:anywhere}.characterName{display:block;font-size:clamp(18px,4vw,23px);line-height:1.4}.appearanceName{color:#6d93a5;margin-top:6px}.catalogueCard .metaLine{margin-top:8px}.catalogueCard .memo{font-size:12px;margin-top:8px}@media(max-width:360px){.cardBottom{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}.catalogueCard{padding:10px}}
 
@@ -779,6 +791,19 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     </section>
   </section>
 </main>
+<div id="cardDetailModal" class="cardDetailModal hidden" role="dialog" aria-modal="true" aria-labelledby="cardDetailTitle">
+  <div class="cardDetailDialog">
+    <div class="cardDetailHeader"><h2 id="cardDetailTitle">フレカ詳細</h2><button type="button" id="closeCardDetail" class="secondary cardDetailClose">閉じる</button></div>
+    <img id="cardDetailPhoto" class="cardDetailPhoto hidden" alt="コーデ写真">
+    <dl id="cardDetailFields" class="cardDetailFields"></dl>
+    <section id="cardDetailQrSection" class="hidden">
+      <h3>フレンドコード（QRコード）</h3>
+      <div class="cardDetailZoom"><button type="button" id="cardQrZoomOut" class="secondary" aria-label="QRコードを縮小">−</button><span id="cardQrZoomValue">100%</span><button type="button" id="cardQrZoomIn" class="secondary" aria-label="QRコードを拡大">＋</button><button type="button" id="cardQrZoomReset" class="secondary">リセット</button></div>
+      <div class="cardDetailQrWrap"><img id="cardDetailQr" class="cardDetailQr" alt="拡大できるフレンドコードQR"></div>
+      <p class="hint">＋で拡大するとQRコードを読み取りやすくできます。拡大した画像は枠内をスクロールして位置を調整できます。</p>
+    </section>
+  </div>
+</div>
 <div id="cropModal" class="cropModal hidden" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
   <div class="cropDialog"><h2 id="cropTitle">画像を切り取る</h2><p id="cropHelp" class="hint">画像を指で動かし、2本指で拡大・縮小できます。</p>
     <div class="cropCanvasWrap"><canvas id="cropCanvas" width="900" height="1200"></canvas></div>
@@ -1540,6 +1565,38 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     }
     return result;
   }
+  let cardDetailQrScale=1;
+  function setCardDetailQrScale(next){
+    cardDetailQrScale=Math.max(1,Math.min(4,Math.round(next*10)/10));
+    const img=$('cardDetailQr');if(img)img.style.transform=`scale(${cardDetailQrScale})`;
+    const label=$('cardQrZoomValue');if(label)label.textContent=Math.round(cardDetailQrScale*100)+'%';
+  }
+  function closeCardDetail(){
+    $('cardDetailModal')?.classList.add('hidden');
+    if($('cardDetailPhoto'))$('cardDetailPhoto').src='';
+    if($('cardDetailQr'))$('cardDetailQr').src='';
+  }
+  async function openCardDetail(card){
+    const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id);
+    $('cardDetailTitle').textContent=card.card_name||'フレカ詳細';
+    const fields=$('cardDetailFields');fields.replaceChildren();
+    const rows=[['マイキャラ',character?.character_name||'未設定'],['スタイル',d.appearance||'未設定'],['色',d.color||'未設定'],['弾数・シリーズ',d.series||'未設定'],['ブランド',d.brand||'未設定'],['メモ',d.memo||'なし'],['公開設定',card.is_public===false?'非公開':'公開']];
+    rows.forEach(([label,value])=>{const dt=document.createElement('dt');dt.textContent=label;const dd=document.createElement('dd');dd.textContent=value;fields.append(dt,dd);});
+    const photo=$('cardDetailPhoto');photo.classList.add('hidden');photo.removeAttribute('src');
+    const qrSection=$('cardDetailQrSection'),qr=$('cardDetailQr');qrSection.classList.add('hidden');qr.removeAttribute('src');setCardDetailQrScale(1);
+    $('cardDetailModal').classList.remove('hidden');
+    try{
+      if(d.photo_path){const url=await signedImageUrl(d.photo_path);if(url){photo.src=url;photo.classList.remove('hidden');}}
+      if(d.qr_path){const url=await signedImageUrl(d.qr_path);if(url){qr.src=url;qrSection.classList.remove('hidden');}}
+    }catch(error){console.warn('フレカ詳細画像の読み込みに失敗しました',error);}
+  }
+  $('closeCardDetail')?.addEventListener('click',closeCardDetail);
+  $('cardDetailModal')?.addEventListener('click',e=>{if(e.target===$('cardDetailModal'))closeCardDetail();});
+  $('cardQrZoomIn')?.addEventListener('click',()=>setCardDetailQrScale(cardDetailQrScale+.25));
+  $('cardQrZoomOut')?.addEventListener('click',()=>setCardDetailQrScale(cardDetailQrScale-.25));
+  $('cardQrZoomReset')?.addEventListener('click',()=>setCardDetailQrScale(1));
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('cardDetailModal')?.classList.contains('hidden'))closeCardDetail();});
+
   function renderCards(){
     const list=$('cardsList');if(!list)return;list.replaceChildren();const count=$('searchResultCount');
     if(!currentUser){if(count)count.textContent='— 枚';appendText(list,'p','ログインするとフレカを表示できます。','muted');return;}
@@ -1566,6 +1623,9 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const bottom=document.createElement('div');bottom.className='cardBottom';const qrStage=document.createElement('div');qrStage.className='qrStage';
       const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qrStage.appendChild(qrPlaceholder);bottom.appendChild(qrStage);
       const details=document.createElement('div');details.className='cardDetails';const characterLabel=appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');appendText(details,'div',(d.appearance||'スタイル未設定')+' ver.','appearanceName');bottom.appendChild(details);item.appendChild(bottom);
+      photoStage.setAttribute('role','button');photoStage.setAttribute('tabindex','0');photoStage.setAttribute('aria-label',card.card_name+'の詳細を表示');
+      photoStage.addEventListener('click',()=>openCardDetail(card));
+      photoStage.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openCardDetail(card);}});
       applyCardCharacterTheme(item,photoStage,qrStage,title,characterLabel,character);
       const visibility=document.createElement('label');visibility.className='switchrow cardVisibilityToggle';const check=document.createElement('input');check.type='checkbox';check.checked=card.is_public!==false;check.addEventListener('change',()=>setCardVisibility(card,check.checked,check));visibility.append(check,document.createTextNode('共有ページに公開'));item.appendChild(visibility);list.appendChild(item);
       renderCardMedia(photoStage,qrStage,d).catch(console.error);
