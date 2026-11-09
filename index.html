@@ -142,8 +142,7 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 .cardDetailHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.cardDetailHeader h2{margin:0;overflow-wrap:anywhere}.cardDetailClose{flex:none;padding:7px 12px}
 .cardDetailPhoto{display:block;width:100%;max-height:42dvh;object-fit:contain;background:#f4fbff;border:1px solid var(--line);border-radius:14px;margin:12px auto}
 .cardDetailQrWrap{overflow:auto;max-height:48dvh;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px;touch-action:pan-x pan-y}
-.cardDetailQr{display:block;width:min(100%,340px);height:auto;object-fit:contain;transform-origin:center;transition:transform .12s ease;image-rendering:auto}
-.cardDetailZoom{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:8px 0}.cardDetailZoom button{min-width:46px;padding:8px 12px}.cardDetailZoom span{font-size:12px;color:#66899b;min-width:42px;text-align:center}
+.cardDetailQr{display:block;width:min(100%,190px);height:auto;object-fit:contain;transform-origin:center;image-rendering:auto;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 .cardDetailFields{display:grid;grid-template-columns:100px minmax(0,1fr);gap:7px 10px;margin:12px 0}.cardDetailFields dt{font-size:12px;color:#7194a5;font-weight:700}.cardDetailFields dd{margin:0;overflow-wrap:anywhere;font-size:13px;white-space:pre-wrap}
 .catalogueCard .photoStage{cursor:zoom-in}
 
@@ -798,9 +797,8 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     <dl id="cardDetailFields" class="cardDetailFields"></dl>
     <section id="cardDetailQrSection" class="hidden">
       <h3>フレンドコード（QRコード）</h3>
-      <div class="cardDetailZoom"><button type="button" id="cardQrZoomOut" class="secondary" aria-label="QRコードを縮小">−</button><span id="cardQrZoomValue">100%</span><button type="button" id="cardQrZoomIn" class="secondary" aria-label="QRコードを拡大">＋</button><button type="button" id="cardQrZoomReset" class="secondary">リセット</button></div>
-      <div class="cardDetailQrWrap"><img id="cardDetailQr" class="cardDetailQr" alt="拡大できるフレンドコードQR"></div>
-      <p class="hint">＋で拡大するとQRコードを読み取りやすくできます。拡大した画像は枠内をスクロールして位置を調整できます。</p>
+      <div class="cardDetailQrWrap"><img id="cardDetailQr" class="cardDetailQr" alt="ピンチ操作で拡大できるフレンドコードQR"></div>
+      <p class="hint">QR画像を2本指でピンチアウト・ピンチインすると拡大・縮小できます。</p>
     </section>
   </div>
 </div>
@@ -929,7 +927,8 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const selector=$('themePalette');if(selector&&selector.value!==palette)selector.value=palette;
     localStorage.setItem(PALETTE_KEY,palette);
   }
-  applyThemePalette(localStorage.getItem(PALETTE_KEY) || 'sky');
+  // Logged-out and pre-registration screens always use a neutral white theme.
+  applyThemePalette('white');
   $('themePalette')?.addEventListener('change', e => {
     const palette=e.target.value;
     applyThemePalette(palette);
@@ -1037,7 +1036,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if (error) return message('authStatus', 'ログインできませんでした。ID・パスワードを確認してください。');
     message('authStatus', 'ログインしました。');
   }
-  async function signOut() { if (!client) return; const {error} = await client.auth.signOut(); if (error) throw error; currentUser = null; updateAccountUI(); showView('home'); }
+  async function signOut() { if (!client) return; const {error} = await client.auth.signOut(); if (error) throw error; currentUser = null; applyThemePalette('white'); updateAccountUI(); showView('home'); }
   function updateAccountUI() {
     const loggedIn = !!currentUser;
     $('authPanel')?.classList.toggle('hidden', loggedIn);
@@ -1566,11 +1565,17 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     return result;
   }
   let cardDetailQrScale=1;
+  const qrPointers=new Map();let qrPinchStart=0,qrScaleStart=1;
   function setCardDetailQrScale(next){
-    cardDetailQrScale=Math.max(1,Math.min(4,Math.round(next*10)/10));
+    cardDetailQrScale=Math.max(1,Math.min(4,Math.round(next*100)/100));
     const img=$('cardDetailQr');if(img)img.style.transform=`scale(${cardDetailQrScale})`;
-    const label=$('cardQrZoomValue');if(label)label.textContent=Math.round(cardDetailQrScale*100)+'%';
   }
+  const qrDistance=()=>{const pts=[...qrPointers.values()];if(pts.length<2)return 0;return Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);};
+  const detailQr=$('cardDetailQr');
+  detailQr?.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;detailQr.setPointerCapture?.(e.pointerId);qrPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(qrPointers.size===2){qrPinchStart=qrDistance();qrScaleStart=cardDetailQrScale;}});
+  detailQr?.addEventListener('pointermove',e=>{if(!qrPointers.has(e.pointerId))return;qrPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(qrPointers.size>=2){e.preventDefault();const distance=qrDistance();if(qrPinchStart>0)setCardDetailQrScale(qrScaleStart*distance/qrPinchStart);}});
+  const endQrPointer=e=>{qrPointers.delete(e.pointerId);if(qrPointers.size<2)qrPinchStart=0;};
+  detailQr?.addEventListener('pointerup',endQrPointer);detailQr?.addEventListener('pointercancel',endQrPointer);detailQr?.addEventListener('lostpointercapture',endQrPointer);
   function closeCardDetail(){
     $('cardDetailModal')?.classList.add('hidden');
     if($('cardDetailPhoto'))$('cardDetailPhoto').src='';
@@ -1592,9 +1597,6 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   }
   $('closeCardDetail')?.addEventListener('click',closeCardDetail);
   $('cardDetailModal')?.addEventListener('click',e=>{if(e.target===$('cardDetailModal'))closeCardDetail();});
-  $('cardQrZoomIn')?.addEventListener('click',()=>setCardDetailQrScale(cardDetailQrScale+.25));
-  $('cardQrZoomOut')?.addEventListener('click',()=>setCardDetailQrScale(cardDetailQrScale-.25));
-  $('cardQrZoomReset')?.addEventListener('click',()=>setCardDetailQrScale(1));
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('cardDetailModal')?.classList.contains('hidden'))closeCardDetail();});
 
   function renderCards(){
@@ -1945,7 +1947,8 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     }
     if(profileError)throw new Error('公開プロフィールを取得できません：'+profileError.message);
     if(!profile)throw new Error('この図鑑は非公開、または共有リンクが無効です。');
-    applyThemePalette(localStorage.getItem(PALETTE_KEY)||profile.theme_palette||'sky');
+    // Shared pages always use the owner's saved palette, never the viewer's local preference.
+    applyThemePalette(profile.theme_palette||'sky');
     $('shareOwnerName').textContent=profile.display_name ? profile.display_name+' さんのフレカ図鑑' : 'フレカ図鑑';
     let sharedRows;
     try{
@@ -1993,7 +1996,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(error)return message('shareStatus','保存エラー：'+error.message);
     await loadShare();scheduleCloudBackup();message('shareStatus','公開設定を更新しました。');
   }
-  async function loadData(){if(!client||!currentUser)return;await loadCharacters();await loadCards();await loadShare();}
+  async function loadData(){if(!client||!currentUser)return;const {data:profile,error:profileError}=await client.from('profiles').select('theme_palette').eq('id',currentUser.id).maybeSingle();if(profileError)console.warn('テーマ設定を取得できません',profileError);applyThemePalette(profile?.theme_palette||'sky');await loadCharacters();await loadCards();await loadShare();}
 
   // Full backup: database rows plus original image files from private Storage.
   let cloudBackupTimer=null, cloudBackupRunning=false;
