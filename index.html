@@ -999,7 +999,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       client.auth.onAuthStateChange((_event, session) => {
         currentUser = session?.user || null; updateAccountUI();
         if (currentUser) setTimeout(() => loadData().catch(err => message('authStatus', 'データ読み込みエラー：' + err.message)), 0);
-        else { cards = []; characters = []; renderCards(); renderCharacters(); renderCharacterChips(); updateCharacterOptions(); renderManageCards(); message('cardCount','0'); message('charCount','0'); }
+        else { applyThemePalette('white'); cards = []; characters = []; renderCards(); renderCharacters(); renderCharacterChips(); updateCharacterOptions(); renderManageCards(); message('cardCount','0'); message('charCount','0'); }
       });
       updateAccountUI(); if (currentUser) await loadData();
     })();
@@ -2048,6 +2048,25 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(!profile)throw new Error('この図鑑は非公開、または共有リンクが無効です。');
     // Shared pages always use the owner's saved palette, never the viewer's local preference.
     applyThemePalette(profile.theme_palette||'sky');
+    // Reflect the owner's palette changes while this shared page remains open.
+    if(window.__aipriShareThemeChannel){try{client.removeChannel(window.__aipriShareThemeChannel);}catch{}}
+    window.__aipriShareThemeChannel=client.channel('shared-theme-'+profile.id)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'profiles',filter:'id=eq.'+profile.id},payload=>{
+        const next=payload.new?.theme_palette;
+        if(next)applyThemePalette(next);
+      }).subscribe();
+    if(!window.__aipriShareThemeRefreshBound){
+      window.__aipriShareThemeRefreshBound=true;
+      window.addEventListener('focus',async()=>{
+        if(!shareViewerMode||!client||!activeShareSlug)return;
+        try{
+          let q=client.from('profiles').select('theme_palette,is_public').eq('share_code',activeShareSlug).eq('is_public',true);
+          let result=await q.maybeSingle();
+          if(!result.data&&!result.error)result=await client.from('profiles').select('theme_palette,is_public').eq('share_slug',activeShareSlug).eq('is_public',true).maybeSingle();
+          if(result.data?.is_public&&result.data.theme_palette)applyThemePalette(result.data.theme_palette);
+        }catch(error){console.warn('共有元テーマカラーの再取得に失敗しました',error);}
+      });
+    }
     $('shareOwnerName').textContent=profile.display_name ? profile.display_name+' さんのフレカ図鑑' : 'フレカ図鑑';
     let sharedRows;
     try{
