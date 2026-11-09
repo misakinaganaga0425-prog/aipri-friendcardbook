@@ -1922,6 +1922,10 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const title=appendText(item,'h3',card.card_name,'cardTitle');
       const photo=document.createElement('div');photo.className='photoStage';
       const placeholder=document.createElement('div');placeholder.className='photoPlaceholder';placeholder.textContent='コーデ写真';photo.appendChild(placeholder);item.appendChild(photo);
+      photo.setAttribute('role','button');photo.setAttribute('tabindex','0');photo.setAttribute('aria-label',(card.card_name||'フレカ')+'の詳細を表示');
+      photo.style.cursor='pointer';
+      photo.addEventListener('click',()=>openCardDetail(card));
+      photo.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openCardDetail(card);}});
       const bottom=document.createElement('div');bottom.className='cardBottom';
       const qr=document.createElement('div');qr.className='qrStage';const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='QR画像';qr.appendChild(qrPlaceholder);attachQrTap(qr);bottom.appendChild(qr);
       const details=document.createElement('div');details.className='cardDetails';
