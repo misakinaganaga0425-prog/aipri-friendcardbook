@@ -694,6 +694,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     </details>
     <section id="cardCataloguePanel" class="panel cataloguePanel" aria-live="polite">
       <div class="between"><h3>フレカ図鑑</h3><span id="searchResultCount" class="pill">0 枚</span></div>
+      <p class="hint cardTapGuide">コーデ写真をタップすると詳細を確認できます。QR画像をタップすると拡大・縮小できます。</p>
       <label class="catalogueSortControl">並び替え<select id="cardSort"><option value="character" selected>マイキャラ順</option><option value="default">登録順</option><option value="name">コーデ名順</option></select></label>
       <div id="cardsList" class="itemList"><p class="muted">ログインするとフレカを表示できます。</p></div>
     </section>
@@ -777,6 +778,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         </div>
       </details>
       <div class="between"><h3>フレカ図鑑</h3><span id="sharedSearchResultCount" class="pill">0 枚</span></div>
+      <p class="hint cardTapGuide">コーデ写真をタップすると詳細を確認できます。QR画像をタップすると拡大・縮小できます。</p>
       <label class="catalogueSortControl">並び替え<select id="sharedCardSort"><option value="character" selected>マイキャラ順</option><option value="default">登録順</option><option value="name">コーデ名順</option></select></label>
       <div id="sharedCardsList" class="cardsList"></div>
       </section>
@@ -1595,7 +1597,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id);
     $('cardDetailTitle').textContent=card.card_name||'フレカ詳細';
     const fields=$('cardDetailFields');fields.replaceChildren();
-    const rows=[['マイキャラ',character?.character_name||'未設定'],['スタイル',d.appearance||'未設定'],['色',d.color||'未設定'],['弾数・シリーズ',d.series||'未設定'],['ブランド',d.brand||'未設定'],['メモ',d.memo||'なし'],['公開設定',card.is_public===false?'非公開':'公開']];
+    const rows=[['マイキャラ',character?.character_name||'未設定'],['スタイル',d.appearance||'未設定'],['色',d.color||'未設定'],['弾数・シリーズ',d.series||'未設定'],['メモ',d.memo||'なし'],['公開設定',card.is_public===false?'非公開':'公開']];
     rows.forEach(([label,value])=>{const dt=document.createElement('dt');dt.textContent=label;const dd=document.createElement('dd');dd.textContent=value;fields.append(dt,dd);});
     const photo=$('cardDetailPhoto');photo.classList.add('hidden');photo.removeAttribute('src');
     $('cardDetailModal').classList.remove('hidden');
