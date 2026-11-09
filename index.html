@@ -720,10 +720,6 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         <p class="hint" id="cardAppearanceAddStatus">追加したスタイル名は、フレカ保存時に選択中のマイキャラへ登録されます。</p>
       </div>
       <label>コーデの弾数・シリーズ<input id="cardSeries" maxlength="100" placeholder="例：1弾、プリマジ、アイカツ！ など"><span class="hint">自由に入力できます。シリーズ名や作品名も登録できます。</span></label>
-      <fieldset class="photoOrientationField"><legend>写真の向き</legend>
-        <label><input type="radio" name="cardPhotoOrientation" value="portrait" checked> 縦向き</label>
-        <label><input type="radio" name="cardPhotoOrientation" value="landscape"> 横向き</label>
-      </fieldset>
       <label>コーデを着たマイキャラの写真<input id="cardPhoto" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・カードごとに保存。選択後に切り取り位置や拡大率を調整できます。</span></label>
       <label>フレンドコード（QRコード）の画像<input id="cardQr" type="file" accept="image/jpeg,image/png,image/webp"><span class="hint">任意・写真とは別に保存。QR全体が入るように切り取りできます。</span></label>
       <label>メモ（任意）<textarea id="cardMemo" rows="3" maxlength="1000" placeholder="自由にメモ"></textarea></label>
@@ -812,6 +808,10 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
 </div>
 <div id="cropModal" class="cropModal hidden" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
   <div class="cropDialog"><h2 id="cropTitle">画像を切り取る</h2><p id="cropHelp" class="hint">画像を指で動かし、2本指で拡大・縮小できます。</p>
+    <fieldset id="cropOrientationField" class="photoOrientationField"><legend>写真の向き</legend>
+      <label><input type="radio" name="cropPhotoOrientation" value="portrait" checked> 縦向き</label>
+      <label><input type="radio" name="cropPhotoOrientation" value="landscape"> 横向き</label>
+    </fieldset>
     <div class="cropCanvasWrap"><canvas id="cropCanvas" width="900" height="1200"></canvas></div>
     <div class="cropActions"><button type="button" id="cancelCrop" class="secondary">キャンセル</button><button type="button" id="applyCrop">この範囲で使用</button></div>
   </div>
@@ -1170,16 +1170,29 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     cropMetrics();
     return true;
   }
+  let selectedCardPhotoOrientation='portrait';
+  function cropRatioForOrientation(orientation){return orientation==='landscape'?1.5:(988/1536);}
+  function updateCropOrientation(orientation){
+    if(!cropState||cropState.isQr)return;
+    selectedCardPhotoOrientation=orientation;
+    cropState.ratio=cropRatioForOrientation(orientation);
+    cropCanvas.width=900;cropCanvas.height=Math.round(900/cropState.ratio);
+    cropState.zoom=1;cropState.panX=0;cropState.panY=0;
+    drawCropPreview();
+  }
+  document.querySelectorAll('input[name="cropPhotoOrientation"]').forEach(r=>r.addEventListener('change',()=>updateCropOrientation(r.value)));
   function openCropper(file,input){
     const reader=new FileReader();
     reader.onload=()=>{
       const img=new Image();
       img.onload=()=>{
         const isQr=input.id==='cardQr';
-        const selectedOrientation=document.querySelector('input[name="cardPhotoOrientation"]:checked')?.value||'portrait';
-        const ratio=isQr?1:(selectedOrientation==='landscape'?1.5:(988/1536));
+        const orientation=document.querySelector('input[name="cropPhotoOrientation"]:checked')?.value||'portrait';
+        selectedCardPhotoOrientation=orientation;
+        const ratio=isQr?1:cropRatioForOrientation(orientation);
         cropCanvas.width=900;cropCanvas.height=Math.round(900/ratio);
-        cropState={img,file,input,ratio,zoom:1,panX:0,panY:0};
+        cropState={img,file,input,ratio,zoom:1,panX:0,panY:0,isQr};
+        $('cropOrientationField').classList.toggle('hidden',isQr);
         cropPointers.clear();cropGesture=null;
         $('cropTitle').textContent=isQr?'QRコード画像を切り取る':'コーデ写真を切り取る';
         $('cropHelp').textContent=isQr?'QRコードを自動検知します。位置がずれていたら指で動かし、2本指で調整してね。':'画像を指で動かし、2本指で拡大・縮小してマイキャラを合わせてね。';
@@ -1203,6 +1216,16 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const file=e.target.files?.[0];
     if(file){if(validImage(file,id==='cardQr'?'QRコード画像':'写真'))openCropper(file,e.target);else e.target.value='';}
   }));
+  // My Character cover and style photos use the same crop editor.
+  document.addEventListener('change',e=>{
+    const input=e.target;
+    if(!(input instanceof HTMLInputElement)||input.type!=='file'||input.id==='cardPhoto'||input.id==='cardQr'||input.id==='restoreBackupFile')return;
+    if(!input.closest('#characterEditForm'))return;
+    const file=input.files?.[0];
+    if(file){if(validImage(file,'マイキャラ写真'))openCropper(file,input);else input.value='';}
+  });
+  // iOS may emit a cancel event when the system photo picker is dismissed.
+  document.addEventListener('cancel',e=>{if(e.target instanceof HTMLInputElement&&e.target.type==='file'){/* Keep the current form untouched. */}},true);
   $('cancelCrop').addEventListener('click',()=>{if(cropState)cropState.input.value='';cropState=null;cropPointers.clear();cropGesture=null;$('cropModal').classList.add('hidden');});
   $('applyCrop').addEventListener('click',()=>{
     if(!cropState)return;
@@ -1219,7 +1242,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   $('cropModal').addEventListener('click',e=>{if(e.target===$('cropModal'))$('cancelCrop').click();});
 
   function getCardDataFields(){
-    return {color:$('cardColor').value.trim(),appearance:$('cardAppearance').value.trim(),series:$('cardSeries').value.trim(),memo:$('cardMemo').value.trim(),photo_orientation:document.querySelector('input[name="cardPhotoOrientation"]:checked')?.value||'portrait'};
+    return {color:$('cardColor').value.trim(),appearance:$('cardAppearance').value.trim(),series:$('cardSeries').value.trim(),memo:$('cardMemo').value.trim(),photo_orientation:selectedCardPhotoOrientation||'portrait'};
   }
   function validImage(file,label){
     if(!file)return true;
@@ -1239,7 +1262,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   function resetCardForm(){
     pendingCardAppearanceTypes=[];
     if($('newCardAppearanceName'))$('newCardAppearanceName').value='';
-    const portraitOrientation=document.querySelector('input[name="cardPhotoOrientation"][value="portrait"]');if(portraitOrientation)portraitOrientation.checked=true;
+    selectedCardPhotoOrientation='portrait';const portraitOrientation=document.querySelector('input[name="cropPhotoOrientation"][value="portrait"]');if(portraitOrientation)portraitOrientation.checked=true;
     ['newCardName','cardColor','newCharacterInline','cardAppearance','cardSeries','cardMemo','cardPhoto','cardQr'].forEach(id=>{if($(id))$(id).value='';});
     $('cardPublicToggle').checked=false;$('cardCharacter').value='';editingCardId=null;$('addCard').textContent='フレカを登録';$('cancelCardEdit').classList.add('hidden');
   }
@@ -1253,7 +1276,8 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     $('newCharacterInline').value='';
     // Rebuild style choices after selecting the character, then restore the saved style.
     updateCardAppearanceOptions(d.appearance||'');
-    const savedOrientation=document.querySelector('input[name="cardPhotoOrientation"][value="'+(d.photo_orientation==='landscape'?'landscape':'portrait')+'"]');
+    selectedCardPhotoOrientation=d.photo_orientation==='landscape'?'landscape':'portrait';
+    const savedOrientation=document.querySelector('input[name="cropPhotoOrientation"][value="'+selectedCardPhotoOrientation+'"]');
     if(savedOrientation)savedOrientation.checked=true;
     $('cardSeries').value=d.series||'';$('cardMemo').value=d.memo||'';$('cardPublicToggle').checked=card.is_public!==false;
     $('cardPhoto').value='';$('cardQr').value='';$('addCard').textContent='変更を保存';$('cancelCardEdit').classList.remove('hidden');
@@ -1869,7 +1893,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   }
   function renderCharacterEditForm(character){
     const list=$('charsList');if(!list)return;list.replaceChildren();const data=character.character_data||{};
-    const form=document.createElement('form');form.className='panel';form.style.marginTop='12px';
+    const form=document.createElement('form');form.id='characterEditForm';form.className='panel';form.style.marginTop='12px';
     const heading=document.createElement('h3');heading.textContent='マイキャラ編集';form.appendChild(heading);
     const hint=document.createElement('p');hint.className='hint';hint.textContent='スタイルを追加すると、フレカ登録のスタイル選択にも反映されます。画像はJPEG・PNG・WebP、各10MBまで。';form.appendChild(hint);
     const field=(label,type='text',value='',placeholder='')=>{const l=document.createElement('label');l.textContent=label;const input=document.createElement(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.value=value||'';input.placeholder=placeholder;if(type==='textarea')input.rows=4;l.appendChild(input);form.appendChild(l);return input;};
