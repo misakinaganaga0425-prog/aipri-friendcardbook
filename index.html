@@ -135,6 +135,22 @@ main { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 .cropCanvasWrap canvas:active { cursor:grabbing; }
 @media(max-width:360px){ #cardsList{gap:7px}.catalogueCard{padding:7px}.catalogueCard .cardBottom{gap:4px} }
 
+
+/* Friend-card detail viewer with QR enlargement controls */
+.cardDetailModal{position:fixed;inset:0;z-index:1100;background:rgba(17,43,58,.72);display:flex;align-items:center;justify-content:center;padding:14px}
+.cardDetailDialog{width:min(100%,560px);max-height:92dvh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:0 18px 60px #16394d55}
+.cardDetailHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.cardDetailHeader h2{margin:0;overflow-wrap:anywhere}.cardDetailClose{flex:none;padding:7px 12px}
+.cardDetailPhoto{display:block;width:100%;max-height:42dvh;object-fit:contain;background:#f4fbff;border:1px solid var(--line);border-radius:14px;margin:12px auto}
+.cardDetailQrWrap{overflow:auto;max-height:48dvh;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px;touch-action:pan-x pan-y}
+.cardDetailQr{display:block;width:min(100%,190px);height:auto;object-fit:contain;transform-origin:center;image-rendering:auto;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
+.cardDetailFields{display:grid;grid-template-columns:100px minmax(0,1fr);gap:7px 10px;margin:12px 0}.cardDetailFields dt{font-size:12px;color:#7194a5;font-weight:700}.cardDetailFields dd{margin:0;overflow-wrap:anywhere;font-size:13px;white-space:pre-wrap}
+.catalogueCard .photoStage{cursor:zoom-in}
+.catalogueCard .qrStage{cursor:zoom-in;touch-action:manipulation}
+.qrImageViewerDialog{width:min(100%,620px);max-height:94dvh;background:#fff;border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.qrImageViewerStage{height:min(76dvh,720px);min-height:220px;display:flex;align-items:center;justify-content:center;overflow:auto;background:#f7f7f7;border-radius:14px;touch-action:none}
+#qrImageViewerImg{display:block;max-width:88vw;max-height:72dvh;width:auto;height:auto;object-fit:contain;transform:scale(1);transform-origin:center;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
+
+
 .cropModal{position:fixed;inset:0;z-index:1000;background:rgba(17,43,58,.68);display:flex;align-items:center;justify-content:center;padding:16px}.cropDialog{width:min(100%,520px);max-height:92dvh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:0 18px 60px #16394d55}.cropDialog h2{font-size:20px}.cropCanvasWrap{display:flex;justify-content:center;background:#eef8fc;border-radius:16px;padding:10px;overflow:hidden}.cropCanvasWrap canvas{display:block;max-width:100%;max-height:48dvh;object-fit:contain;border-radius:8px}.cropControls label{margin:10px 0}.cropControls input[type=range]{width:100%;accent-color:#55b9e5}.cropActions{display:flex;gap:8px;position:sticky;bottom:0;background:#fff;padding-top:10px}.cropActions button{flex:1}
 .catalogueCard{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding:14px;border:1px solid #cce8f5;border-radius:20px;background:#fbfeff;min-width:0}.catalogueCard .cardTitle{font-size:clamp(18px,4.5vw,24px);line-height:1.35;text-align:center;overflow-wrap:anywhere;margin:0;padding:5px 42px 7px}.catalogueCard .cardDelete{position:absolute;right:10px;top:10px;z-index:1}.photoStage{width:min(100%,320px);margin:0 auto;display:grid;place-items:center;overflow:hidden;border:1px solid var(--line);border-radius:16px;background:#f1faff}.photoStage img{width:100%;height:100%;object-fit:contain}.photoPlaceholder{padding:12px;color:#7898a8;text-align:center;font-size:12px}.cardBottom{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center}.qrStage{display:grid;place-items:center;min-width:0;aspect-ratio:1/1;overflow:hidden;background:#fff;border:1px solid var(--line);border-radius:14px}.qrStage img{width:100%;height:100%;object-fit:contain}.cardDetails{min-width:0;overflow-wrap:anywhere}.characterName{display:block;font-size:clamp(18px,4vw,23px);line-height:1.4}.appearanceName{color:#6d93a5;margin-top:6px}.catalogueCard .metaLine{margin-top:8px}.catalogueCard .memo{font-size:12px;margin-top:8px}@media(max-width:360px){.cardBottom{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}.catalogueCard{padding:10px}}
 
@@ -678,6 +694,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     </details>
     <section id="cardCataloguePanel" class="panel cataloguePanel" aria-live="polite">
       <div class="between"><h3>フレカ図鑑</h3><span id="searchResultCount" class="pill">0 枚</span></div>
+      <p class="hint cardTapGuide">コーデ写真をタップすると詳細を確認できます。QR画像をタップすると拡大・縮小できます。</p>
       <label class="catalogueSortControl">並び替え<select id="cardSort"><option value="character" selected>マイキャラ順</option><option value="default">登録順</option><option value="name">コーデ名順</option></select></label>
       <div id="cardsList" class="itemList"><p class="muted">ログインするとフレカを表示できます。</p></div>
     </section>
@@ -761,6 +778,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         </div>
       </details>
       <div class="between"><h3>フレカ図鑑</h3><span id="sharedSearchResultCount" class="pill">0 枚</span></div>
+      <p class="hint cardTapGuide">コーデ写真をタップすると詳細を確認できます。QR画像をタップすると拡大・縮小できます。</p>
       <label class="catalogueSortControl">並び替え<select id="sharedCardSort"><option value="character" selected>マイキャラ順</option><option value="default">登録順</option><option value="name">コーデ名順</option></select></label>
       <div id="sharedCardsList" class="cardsList"></div>
       </section>
@@ -779,6 +797,20 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     </section>
   </section>
 </main>
+<div id="cardDetailModal" class="cardDetailModal hidden" role="dialog" aria-modal="true" aria-labelledby="cardDetailTitle">
+  <div class="cardDetailDialog">
+    <div class="cardDetailHeader"><h2 id="cardDetailTitle">フレカ詳細</h2><button type="button" id="closeCardDetail" class="secondary cardDetailClose">閉じる</button></div>
+    <img id="cardDetailPhoto" class="cardDetailPhoto hidden" alt="コーデ写真">
+    <dl id="cardDetailFields" class="cardDetailFields"></dl>
+  </div>
+</div>
+<div id="qrImageViewer" class="cardDetailModal hidden" role="dialog" aria-modal="true" aria-label="QRコード画像">
+  <div class="qrImageViewerDialog">
+    <div class="cardDetailHeader"><strong>QRコード</strong><button type="button" id="closeQrImageViewer" class="secondary cardDetailClose">閉じる</button></div>
+    <div id="qrImageViewerStage" class="qrImageViewerStage"><img id="qrImageViewerImg" alt="QRコード画像。2本指で拡大・縮小できます"></div>
+    <p class="hint">画像を2本指で広げると拡大、つまむと縮小できます。</p>
+  </div>
+</div>
 <div id="cropModal" class="cropModal hidden" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
   <div class="cropDialog"><h2 id="cropTitle">画像を切り取る</h2><p id="cropHelp" class="hint">画像を指で動かし、2本指で拡大・縮小できます。</p>
     <div class="cropCanvasWrap"><canvas id="cropCanvas" width="900" height="1200"></canvas></div>
@@ -904,7 +936,8 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const selector=$('themePalette');if(selector&&selector.value!==palette)selector.value=palette;
     localStorage.setItem(PALETTE_KEY,palette);
   }
-  applyThemePalette(localStorage.getItem(PALETTE_KEY) || 'sky');
+  // Logged-out and pre-registration screens always use a neutral white theme.
+  applyThemePalette('white');
   $('themePalette')?.addEventListener('change', e => {
     const palette=e.target.value;
     applyThemePalette(palette);
@@ -1012,7 +1045,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if (error) return message('authStatus', 'ログインできませんでした。ID・パスワードを確認してください。');
     message('authStatus', 'ログインしました。');
   }
-  async function signOut() { if (!client) return; const {error} = await client.auth.signOut(); if (error) throw error; currentUser = null; updateAccountUI(); showView('home'); }
+  async function signOut() { if (!client) return; const {error} = await client.auth.signOut(); if (error) throw error; currentUser = null; applyThemePalette('white'); updateAccountUI(); showView('home'); }
   function updateAccountUI() {
     const loggedIn = !!currentUser;
     $('authPanel')?.classList.toggle('hidden', loggedIn);
@@ -1540,6 +1573,46 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     }
     return result;
   }
+  let qrViewerScale=1;
+  const qrViewerPointers=new Map();let qrViewerPinchStart=0,qrViewerScaleStart=1;
+  function setQrViewerScale(next){
+    qrViewerScale=Math.max(0.5,Math.min(5,Math.round(next*100)/100));
+    const img=$('qrImageViewerImg');if(img)img.style.transform=`scale(${qrViewerScale})`;
+  }
+  const qrViewerDistance=()=>{const pts=[...qrViewerPointers.values()];if(pts.length<2)return 0;return Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);};
+  const qrViewerImg=$('qrImageViewerImg');
+  qrViewerImg?.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;qrViewerImg.setPointerCapture?.(e.pointerId);qrViewerPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(qrViewerPointers.size===2){qrViewerPinchStart=qrViewerDistance();qrViewerScaleStart=qrViewerScale;}});
+  qrViewerImg?.addEventListener('pointermove',e=>{if(!qrViewerPointers.has(e.pointerId))return;qrViewerPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(qrViewerPointers.size>=2){e.preventDefault();const distance=qrViewerDistance();if(qrViewerPinchStart>0)setQrViewerScale(qrViewerScaleStart*distance/qrViewerPinchStart);}});
+  const endQrViewerPointer=e=>{qrViewerPointers.delete(e.pointerId);if(qrViewerPointers.size<2)qrViewerPinchStart=0;};
+  qrViewerImg?.addEventListener('pointerup',endQrViewerPointer);qrViewerImg?.addEventListener('pointercancel',endQrViewerPointer);qrViewerImg?.addEventListener('lostpointercapture',endQrViewerPointer);
+  function openQrImageViewer(src){if(!src)return;const img=$('qrImageViewerImg');img.src=src;setQrViewerScale(1);$('qrImageViewer').classList.remove('hidden');}
+  function closeQrImageViewer(){$('qrImageViewer')?.classList.add('hidden');if($('qrImageViewerImg'))$('qrImageViewerImg').removeAttribute('src');qrViewerPointers.clear();qrViewerPinchStart=0;}
+  $('closeQrImageViewer')?.addEventListener('click',closeQrImageViewer);
+  $('qrImageViewer')?.addEventListener('click',e=>{if(e.target===$('qrImageViewer'))closeQrImageViewer();});
+  function closeCardDetail(){
+    $('cardDetailModal')?.classList.add('hidden');
+    if($('cardDetailPhoto'))$('cardDetailPhoto').src='';
+  }
+  async function openCardDetail(card){
+    const d=card.card_data||{},character=characters.find(c=>c.id===card.character_id);
+    $('cardDetailTitle').textContent=card.card_name||'フレカ詳細';
+    const fields=$('cardDetailFields');fields.replaceChildren();
+    const rows=[['マイキャラ',character?.character_name||'未設定'],['スタイル',d.appearance||'未設定'],['色',d.color||'未設定'],['弾数・シリーズ',d.series||'未設定'],['メモ',d.memo||'なし'],['公開設定',card.is_public===false?'非公開':'公開']];
+    rows.forEach(([label,value])=>{const dt=document.createElement('dt');dt.textContent=label;const dd=document.createElement('dd');dd.textContent=value;fields.append(dt,dd);});
+    const photo=$('cardDetailPhoto');photo.classList.add('hidden');photo.removeAttribute('src');
+    $('cardDetailModal').classList.remove('hidden');
+    try{if(d.photo_path){const url=await signedImageUrl(d.photo_path);if(url){photo.src=url;photo.classList.remove('hidden');}}}
+    catch(error){console.warn('フレカ詳細画像の読み込みに失敗しました',error);}
+  }
+  $('closeCardDetail')?.addEventListener('click',closeCardDetail);
+  $('cardDetailModal')?.addEventListener('click',e=>{if(e.target===$('cardDetailModal'))closeCardDetail();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('qrImageViewer')?.classList.contains('hidden'))closeQrImageViewer();else if(!$('cardDetailModal')?.classList.contains('hidden'))closeCardDetail();}});
+  function attachQrTap(stage){
+    stage.setAttribute('role','button');stage.setAttribute('tabindex','0');stage.setAttribute('aria-label','QRコードをタップして拡大');
+    const open=()=>{const img=stage.querySelector('img');if(img?.src)openQrImageViewer(img.src);};
+    stage.addEventListener('click',open);stage.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});
+  }
+
   function renderCards(){
     const list=$('cardsList');if(!list)return;list.replaceChildren();const count=$('searchResultCount');
     if(!currentUser){if(count)count.textContent='— 枚';appendText(list,'p','ログインするとフレカを表示できます。','muted');return;}
@@ -1564,8 +1637,11 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const title=appendText(item,'h3',card.card_name,'cardTitle');
       const photoStage=document.createElement('div');photoStage.className='photoStage';const photoPlaceholder=document.createElement('div');photoPlaceholder.className='photoPlaceholder';photoPlaceholder.textContent='コーデ写真';photoStage.appendChild(photoPlaceholder);item.appendChild(photoStage);
       const bottom=document.createElement('div');bottom.className='cardBottom';const qrStage=document.createElement('div');qrStage.className='qrStage';
-      const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qrStage.appendChild(qrPlaceholder);bottom.appendChild(qrStage);
+      const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='QR画像';qrStage.appendChild(qrPlaceholder);attachQrTap(qrStage);bottom.appendChild(qrStage);
       const details=document.createElement('div');details.className='cardDetails';const characterLabel=appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');appendText(details,'div',(d.appearance||'スタイル未設定')+' ver.','appearanceName');bottom.appendChild(details);item.appendChild(bottom);
+      photoStage.setAttribute('role','button');photoStage.setAttribute('tabindex','0');photoStage.setAttribute('aria-label',card.card_name+'の詳細を表示');
+      photoStage.addEventListener('click',()=>openCardDetail(card));
+      photoStage.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openCardDetail(card);}});
       applyCardCharacterTheme(item,photoStage,qrStage,title,characterLabel,character);
       const visibility=document.createElement('label');visibility.className='switchrow cardVisibilityToggle';const check=document.createElement('input');check.type='checkbox';check.checked=card.is_public!==false;check.addEventListener('change',()=>setCardVisibility(card,check.checked,check));visibility.append(check,document.createTextNode('共有ページに公開'));item.appendChild(visibility);list.appendChild(item);
       renderCardMedia(photoStage,qrStage,d).catch(console.error);
@@ -1846,8 +1922,12 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const title=appendText(item,'h3',card.card_name,'cardTitle');
       const photo=document.createElement('div');photo.className='photoStage';
       const placeholder=document.createElement('div');placeholder.className='photoPlaceholder';placeholder.textContent='コーデ写真';photo.appendChild(placeholder);item.appendChild(photo);
+      photo.setAttribute('role','button');photo.setAttribute('tabindex','0');photo.setAttribute('aria-label',(card.card_name||'フレカ')+'の詳細を表示');
+      photo.style.cursor='pointer';
+      photo.addEventListener('click',()=>openCardDetail(card));
+      photo.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openCardDetail(card);}});
       const bottom=document.createElement('div');bottom.className='cardBottom';
-      const qr=document.createElement('div');qr.className='qrStage';const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='フレンドコードQR';qr.appendChild(qrPlaceholder);bottom.appendChild(qr);
+      const qr=document.createElement('div');qr.className='qrStage';const qrPlaceholder=document.createElement('div');qrPlaceholder.className='photoPlaceholder';qrPlaceholder.style.minHeight='100px';qrPlaceholder.textContent='QR画像';qr.appendChild(qrPlaceholder);attachQrTap(qr);bottom.appendChild(qr);
       const details=document.createElement('div');details.className='cardDetails';
       const characterLabel=appendText(details,'strong',character?.character_name||'マイキャラ未設定','characterName');
       appendText(details,'div',(d.appearance||'スタイル未設定')+' ver.','appearanceName');
@@ -1885,7 +1965,8 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     }
     if(profileError)throw new Error('公開プロフィールを取得できません：'+profileError.message);
     if(!profile)throw new Error('この図鑑は非公開、または共有リンクが無効です。');
-    applyThemePalette(localStorage.getItem(PALETTE_KEY)||profile.theme_palette||'sky');
+    // Shared pages always use the owner's saved palette, never the viewer's local preference.
+    applyThemePalette(profile.theme_palette||'sky');
     $('shareOwnerName').textContent=profile.display_name ? profile.display_name+' さんのフレカ図鑑' : 'フレカ図鑑';
     let sharedRows;
     try{
@@ -1933,7 +2014,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(error)return message('shareStatus','保存エラー：'+error.message);
     await loadShare();scheduleCloudBackup();message('shareStatus','公開設定を更新しました。');
   }
-  async function loadData(){if(!client||!currentUser)return;await loadCharacters();await loadCards();await loadShare();}
+  async function loadData(){if(!client||!currentUser)return;const {data:profile,error:profileError}=await client.from('profiles').select('theme_palette').eq('id',currentUser.id).maybeSingle();if(profileError)console.warn('テーマ設定を取得できません',profileError);applyThemePalette(profile?.theme_palette||'sky');await loadCharacters();await loadCards();await loadShare();}
 
   // Full backup: database rows plus original image files from private Storage.
   let cloudBackupTimer=null, cloudBackupRunning=false;
