@@ -1716,6 +1716,82 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       message('characterStatus','並び替えを保存できませんでした：'+error.message);
     }
   }
+  async function deleteCharacterWithMode(character,mode,statusEl){
+    if(!currentUser||!client)throw new Error('ログイン状態を確認できません。');
+    const characterId=character.id;
+    const {data:relatedCards,error:cardsReadError}=await fetchCharacterCardsForDelete(characterId);
+    if(cardsReadError)throw cardsReadError;
+    const cardCount=relatedCards.length;
+    const modeLabel=mode==='with-cards'?'マイキャラと関連フレカ':'マイキャラのみ';
+    const finalMessage=mode==='with-cards'
+      ?`「${character.character_name}」と関連するフレカ${cardCount}件を削除します。\nこの操作は元に戻せません。よろしいですか？`
+      :`「${character.character_name}」を削除します。\n関連するフレカ${cardCount}件は残し、マイキャラとの紐づけを解除します。よろしいですか？`;
+    if(!confirm(finalMessage))return;
+    statusEl.textContent='削除しています…';
+    const cardPaths=relatedCards.flatMap(card=>[card.card_data?.photo_path,card.card_data?.qr_path]).filter(Boolean);
+    const d=character.character_data||{};
+    const characterPaths=[d.main_image_path,d.image_path,d.image_url,d.photo_url,d.illustration_url,...(Array.isArray(d.appearance_photos)?d.appearance_photos.map(x=>x?.path):[])].filter(x=>typeof x==='string'&&!/^https?:\/\//i.test(x));
+    if(mode==='with-cards'){
+      if(cardCount){
+        const {error}=await client.from('cards').delete().eq('user_id',currentUser.id).eq('character_id',characterId);
+        if(error)throw new Error('関連フレカを削除できませんでした：'+error.message);
+      }
+    }else if(cardCount){
+      // Require a confirmed update count before deleting the parent character.
+      // Supabase can return no error but update zero rows when RLS blocks the update.
+      const {data:unlinkedRows,error}=await client.from('cards').update({character_id:null})
+        .eq('user_id',currentUser.id).eq('character_id',characterId).select('id');
+      if(error)throw new Error('フレカの紐づけを解除できませんでした：'+error.message);
+      if(!Array.isArray(unlinkedRows)||unlinkedRows.length!==cardCount){
+        throw new Error(`フレカの紐づけ解除を確認できませんでした（対象${cardCount}件／解除確認${unlinkedRows?.length||0}件）。安全のためマイキャラは削除していません。Supabaseの権限設定を確認してください。`);
+      }
+      // Verify no cards remain linked; never rely only on a successful HTTP response.
+      const {data:stillLinked,error:verifyError}=await client.from('cards').select('id')
+        .eq('user_id',currentUser.id).eq('character_id',characterId).limit(1);
+      if(verifyError)throw new Error('紐づけ解除の確認に失敗しました。安全のためマイキャラは削除していません：'+verifyError.message);
+      if(stillLinked?.length)throw new Error('まだマイキャラに紐づくフレカが残っています。安全のためマイキャラは削除していません。');
+    }
+    const {data:deletedCharacter,error:characterDeleteError}=await client.from('my_characters').delete().eq('id',characterId).eq('user_id',currentUser.id).select('id');
+    if(characterDeleteError)throw new Error('マイキャラを削除できませんでした。関連フレカの状態を確認してください：'+characterDeleteError.message);
+    if(!Array.isArray(deletedCharacter)||deletedCharacter.length!==1)throw new Error('マイキャラの削除結果を確認できませんでした。データの状態を確認してください。');
+    const paths=[...new Set([...(mode==='with-cards'?cardPaths:[]),...characterPaths])];
+    if(paths.length){
+      const {error:storageError}=await client.storage.from(BUCKET).remove(paths);
+      if(storageError)console.warn('画像ファイルの一部を削除できませんでした：',storageError.message);
+    }
+    if(activeCharacter===characterId)activeCharacter=null;
+    if(editingCardId&&relatedCards.some(c=>c.id===editingCardId))resetCardForm();
+    imageUrlCache.clear();
+    scheduleCloudBackup();
+    await loadCharacters();
+    if(mode==='with-cards')await loadCards();
+    statusEl.textContent=mode==='with-cards'?'マイキャラと関連フレカを削除しました。':'マイキャラを削除しました。関連フレカはマイキャラ未設定で残しています。';
+  }
+  async function fetchCharacterCardsForDelete(characterId){
+    try{
+      const data=await fetchAllRows(()=>client.from('cards').select('id,card_data,character_id').eq('user_id',currentUser.id).eq('character_id',characterId));
+      return {data: data||[],error:null};
+    }catch(error){return {data:[],error};}
+  }
+  function openCharacterDeleteDialog(character){
+    const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;z-index:3000;background:rgba(20,45,60,.48);display:grid;place-items:center;padding:18px';
+    const box=document.createElement('section');box.className='panel';box.style.cssText='width:min(100%,430px);max-height:85vh;overflow:auto;margin:0;padding:20px;border-radius:22px;background:#fff;box-shadow:0 18px 60px rgba(0,0,0,.25)';
+    const title=document.createElement('h3');title.textContent='マイキャラの削除';
+    const desc=document.createElement('p');desc.textContent='「'+character.character_name+'」の削除方法を選んでください。';desc.style.cssText='font-size:13px;color:#607b8b';
+    const only=document.createElement('button');only.type='button';only.className='secondary';only.style.cssText='display:block;width:100%;text-align:left;margin:10px 0;padding:13px';
+    only.textContent='① マイキャラのみ削除';
+    const onlyHint=document.createElement('small');onlyHint.textContent='関連するフレカは残し、マイキャラとの紐づけを解除します。';onlyHint.style.cssText='display:block;font-weight:400;margin-top:4px';only.appendChild(onlyHint);
+    const all=document.createElement('button');all.type='button';all.className='danger';all.style.cssText='display:block;width:100%;text-align:left;margin:10px 0;padding:13px';
+    all.textContent='② マイキャラと関連フレカを削除';
+    const allHint=document.createElement('small');allHint.textContent='このマイキャラに紐づくフレカと画像も削除します。';allHint.style.cssText='display:block;font-weight:400;margin-top:4px';all.appendChild(allHint);
+    const note=document.createElement('p');note.textContent='※削除したデータは元に戻せません。ほかのマイキャラのデータは削除されません。';note.style.cssText='font-size:11px;color:#b04d62;margin:12px 0';
+    const status=document.createElement('p');status.className='hint';status.setAttribute('role','status');
+    const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='キャンセル';cancel.style.cssText='width:100%;margin-top:8px';
+    const close=()=>overlay.remove();cancel.addEventListener('click',close);overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
+    const run=mode=>{only.disabled=true;all.disabled=true;cancel.disabled=true;deleteCharacterWithMode(character,mode,status).then(()=>{if(status.textContent.includes('削除しました'))setTimeout(close,900);}).catch(error=>{status.textContent=error.message||String(error);only.disabled=false;all.disabled=false;cancel.disabled=false;});};
+    only.addEventListener('click',()=>run('only-character'));all.addEventListener('click',()=>run('with-cards'));
+    box.append(title,desc,only,all,note,status,cancel);overlay.appendChild(box);document.body.appendChild(overlay);
+  }
   function renderCharacters(){
     const list=$('charsList');if(!list)return;list.replaceChildren();
     if(!currentUser){appendText(list,'p','ログインするとマイキャラ図鑑を表示できます。','muted');return;}
@@ -1854,6 +1930,11 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     });
     const status=document.createElement('p');status.className='hint';status.setAttribute('role','status');form.appendChild(status);
     const buttons=document.createElement('div');buttons.className='buttonRow';const save=document.createElement('button');save.type='submit';save.textContent='変更を保存';const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='キャンセル';cancel.addEventListener('click',renderCharacters);buttons.append(save,cancel);form.appendChild(buttons);
+    const deleteArea=document.createElement('section');deleteArea.style.cssText='margin-top:28px;padding:16px 12px 8px;border-top:1px solid #e7dce0;display:grid;gap:8px';
+    const deleteHeading=document.createElement('strong');deleteHeading.textContent='マイキャラの削除';deleteHeading.style.cssText='font-size:13px;color:#9b5364';
+    const deleteHint=document.createElement('p');deleteHint.className='hint';deleteHint.textContent='この操作は元に戻せません。誤操作を防ぐため、削除する場合のみ下のボタンを押してください。';deleteHint.style.margin='0';
+    const deleteButton=document.createElement('button');deleteButton.type='button';deleteButton.className='danger';deleteButton.textContent='このマイキャラを削除する';deleteButton.style.cssText='margin-top:4px;min-height:44px;border-radius:12px';deleteButton.addEventListener('click',()=>openCharacterDeleteDialog(character));
+    deleteArea.append(deleteHeading,deleteHint,deleteButton);form.appendChild(deleteArea);
     form.addEventListener('submit',e=>{e.preventDefault();runSafely(async()=>{
       if(!name.value.trim()){status.textContent='マイキャラ名を入力してください。';return;}
       const upload=async(file,type)=>{if(!file)return null;if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024)throw new Error('画像はJPEG・PNG・WebP、10MB以下にしてください。');const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[file.type];const path=`${currentUser.id}/${character.id}/character-${type}-${Date.now()}.${ext}`;const {error}=await client.storage.from(BUCKET).upload(path,file,{upsert:true,contentType:file.type});if(error)throw new Error('画像アップロード失敗：'+error.message);return path;};
