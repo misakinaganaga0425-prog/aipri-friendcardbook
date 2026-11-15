@@ -2195,10 +2195,10 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       backupStatus(showMessage?'クラウドにバックアップしました。':'変更をクラウドに自動バックアップしました。');
     }finally{cloudBackupRunning=false;}
   }
+  // Automatic cloud backups are temporarily disabled to prevent repeated ZIP uploads.
+  // Manual cloud backup and restore controls remain available below.
   function scheduleCloudBackup(){
-    if(!currentUser||!client)return;
-    clearTimeout(cloudBackupTimer);
-    cloudBackupTimer=setTimeout(()=>saveCloudBackup(false).catch(error=>backupStatus('自動バックアップ失敗：'+error.message)),5000);
+    if(cloudBackupTimer){clearTimeout(cloudBackupTimer);cloudBackupTimer=null;}
   }
   async function restoreBackupBlob(blob){
     if(!currentUser||!client)throw new Error('ログインしてください。');
