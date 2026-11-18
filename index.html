@@ -1230,14 +1230,15 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   $('applyCrop').addEventListener('click',()=>{
     if(!cropState)return;
     const canvas=cropCanvas,{file,input}=cropState;
+    const isQr=!!cropState.isQr;
     canvas.toBlob(blob=>{
       if(!blob){message('cardRegisterStatus','切り取りに失敗しました。');return;}
-      const ext=blob.type==='image/jpeg'?'jpg':'png',name=(file.name.replace(/\.[^.]+$/,'')||'cropped')+'-cropped.'+ext;
-      const cropped=new File([blob],name,{type:blob.type||'image/png',lastModified:Date.now()});
+      const name=(file.name.replace(/\.[^.]+$/,'')||'cropped')+'-cropped.jpg';
+      const cropped=new File([blob],name,{type:'image/jpeg',lastModified:Date.now()});
       const transfer=new DataTransfer();transfer.items.add(cropped);input.files=transfer.files;
       cropState=null;cropPointers.clear();cropGesture=null;$('cropModal').classList.add('hidden');
       message('cardRegisterStatus','切り取り範囲を設定しました。登録するとこの画像が保存されます。');
-    },'image/jpeg',0.92);
+    },'image/jpeg',isQr?0.96:0.78);
   });
   $('cropModal').addEventListener('click',e=>{if(e.target===$('cropModal'))$('cancelCrop').click();});
 
@@ -1534,34 +1535,27 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
   }
   const imageUrlCache=new Map();
   async function signedImageUrl(path,transform=null){
+    // Supabase Image Transformations are intentionally not used.
+    // Images are resized/compressed once in the crop editor before upload.
     if(!path||!client)return null;
     const value=String(path);
     if(/^https?:\/\//i.test(value))return value;
-    const transformKey=transform?JSON.stringify(transform):'original';
-    const cacheKey=value+'|'+transformKey;
-    if(imageUrlCache.has(cacheKey))return imageUrlCache.get(cacheKey);
+    if(imageUrlCache.has(value))return imageUrlCache.get(value);
     const task=(async()=>{
       const storage=client.storage.from(BUCKET);
-      if(transform){
-        try{
-          const {data,error}=await storage.createSignedUrl(value,3600,{transform});
-          if(!error&&data?.signedUrl)return data.signedUrl;
-        }catch(error){console.warn('最適化画像URLを取得できません。元画像を使用します。',error);}
-      }
       try{
         const {data,error}=await storage.createSignedUrl(value,3600);
         if(!error&&data?.signedUrl)return data.signedUrl;
       }catch(error){console.warn('署名付き画像URLの取得に失敗しました',error);}
       try{
-        const options=transform?{transform}:{};
-        const {data}=storage.getPublicUrl(value,options);
+        const {data}=storage.getPublicUrl(value);
         if(data?.publicUrl)return data.publicUrl;
       }catch(error){console.warn('公開画像URLの取得に失敗しました',error);}
       return null;
     })();
-    imageUrlCache.set(cacheKey,task);
+    imageUrlCache.set(value,task);
     const result=await task;
-    if(!result)imageUrlCache.delete(cacheKey);
+    if(!result)imageUrlCache.delete(value);
     return result;
   }
   function appendText(parent,tag,text,className){const el=document.createElement(tag);el.textContent=escapeText(text);if(className)el.className=className;parent.appendChild(el);return el;}
