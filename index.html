@@ -1251,12 +1251,43 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     if(file.size>10*1024*1024){message('cardRegisterStatus',label+'は10MB以下にしてください。');return false;}
     return true;
   }
+  async function makeListThumbnail(file,maxEdge=360,quality=0.76){
+    if(!file)return null;
+    const objectUrl=URL.createObjectURL(file);
+    try{
+      const img=new Image();img.decoding='async';img.src=objectUrl;
+      if(img.decode)await img.decode();else await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
+      const scale=Math.min(1,maxEdge/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height));
+      const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round((img.naturalWidth||img.width)*scale));canvas.height=Math.max(1,Math.round((img.naturalHeight||img.height)*scale));
+      const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));
+      if(!blob)throw new Error('サムネイル画像を作成できませんでした。');
+      const base=(file.name||'image').replace(/\.[^.]+$/,'');
+      return new File([blob],base+'-thumb.webp',{type:'image/webp',lastModified:Date.now()});
+    }finally{URL.revokeObjectURL(objectUrl);}
+  }
+  async function uploadImageAndThumbnail(path,file,thumbMaxEdge=360){
+    const storage=client.storage.from(BUCKET);
+    const {error}=await storage.upload(path,file,{upsert:true,contentType:file.type});
+    if(error)throw new Error('画像アップロード失敗：'+error.message+'（Storageのバケットとポリシーを確認してください）');
+    try{
+      const thumb=await makeListThumbnail(file,thumbMaxEdge,0.76);
+      const thumbPath=path.replace(/\.[^.]+$/,'-thumb.webp');
+      const {error:thumbError}=await storage.upload(thumbPath,thumb,{upsert:true,contentType:'image/webp'});
+      if(thumbError)throw new Error('サムネイル保存失敗：'+thumbError.message);
+      return {path,thumbPath};
+    }catch(error){
+      console.warn('サムネイル作成に失敗しました。元画像は保存されています。',error);
+      return {path,thumbPath:null};
+    }
+  }
   async function uploadCardImage(cardId,file,type){
     if(!file)return null;
     const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[file.type],path=`${currentUser.id}/${cardId}/${type}.${ext}`;
+    if(type==='outfit-photo')return uploadImageAndThumbnail(path,file,360);
     const {error}=await client.storage.from(BUCKET).upload(path,file,{upsert:true,contentType:file.type});
     if(error)throw new Error('画像アップロード失敗：'+error.message+'（Storageのバケットとポリシーを確認してください）');
-    return path;
+    return {path,thumbPath:null};
   }
   let editingCardId=null;
   let pendingCardAppearanceTypes=[];
@@ -1306,11 +1337,12 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         targetCharacter.character_data=nextCharacterData;
       }
       const oldData=oldCard?.card_data||{};
-      const fields={...getCardDataFields(),brand:oldData.brand||'',photo_path:oldData.photo_path||null,qr_path:oldData.qr_path||null};
+      const fields={...getCardDataFields(),brand:oldData.brand||'',photo_path:oldData.photo_path||null,photo_thumb_path:oldData.photo_thumb_path||null,qr_path:oldData.qr_path||null};
       if(isEdit){const {error}=await client.from('cards').update({card_name:name,card_data:fields,character_id:characterId,is_public:$('cardPublicToggle').checked}).eq('id',cardId).eq('user_id',currentUser.id);if(error)throw error;}
       else{const {data,error}=await client.from('cards').insert({user_id:currentUser.id,card_name:name,card_data:fields,character_id:characterId,is_public:$('cardPublicToggle').checked}).select('id').single();if(error)throw error;cardId=data.id;}
-      const newPhotoPath=photo?await uploadCardImage(cardId,photo,'outfit-photo'):fields.photo_path,newQrPath=qr?await uploadCardImage(cardId,qr,'friend-qr'):fields.qr_path;
-      if(photo||qr){const updated={...getCardDataFields(),brand:oldData.brand||'',photo_path:newPhotoPath,qr_path:newQrPath};const {error}=await client.from('cards').update({card_data:updated}).eq('id',cardId).eq('user_id',currentUser.id);if(error)throw error;}
+      const photoUpload=photo?await uploadCardImage(cardId,photo,'outfit-photo'):null,qrUpload=qr?await uploadCardImage(cardId,qr,'friend-qr'):null;
+      const newPhotoPath=photoUpload?.path||fields.photo_path,newPhotoThumbPath=photoUpload?photoUpload.thumbPath:fields.photo_thumb_path,newQrPath=qrUpload?.path||fields.qr_path;
+      if(photo||qr){const updated={...getCardDataFields(),brand:oldData.brand||'',photo_path:newPhotoPath,photo_thumb_path:newPhotoThumbPath,qr_path:newQrPath};const {error}=await client.from('cards').update({card_data:updated}).eq('id',cardId).eq('user_id',currentUser.id);if(error)throw error;}
       resetCardForm();message('cardRegisterStatus',isEdit?'フレカを更新しました！':'フレカを登録しました！');scheduleCloudBackup();await loadCards();await loadCharacters();if(!isEdit)showView('search');
     }catch(error){message('cardRegisterStatus',(isEdit?'更新':'登録')+'中にエラー：'+error.message);await loadCards();}finally{$('addCard').disabled=false;}
   }
@@ -1520,7 +1552,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
             const card=document.createElement('button');card.type='button';card.className='secondary';
             card.style.cssText='min-width:0;display:flex;flex-direction:column;align-items:center;gap:7px;padding:9px;border:2px solid '+theme+'88;border-radius:18px;background:linear-gradient(145deg,#fff,'+theme+'18);color:var(--ink);';
             const frame=document.createElement('span');frame.style.cssText='display:grid;place-items:center;width:100%;aspect-ratio:1/1;overflow:hidden;border-radius:13px;background:#fff';
-            const mainPath=d.main_image_path||d.image_path||d.image_url||d.image||d.photo_url||d.illustration_url;
+            const mainPath=d.main_image_thumb_path||d.main_image_path||d.image_path||d.image_url||d.image||d.photo_url||d.illustration_url;
             if(mainPath){
               const img=document.createElement('img');img.alt=c.character_name+'のメイン画像';img.loading='lazy';img.style.cssText='width:100%;height:100%;object-fit:contain';
               frame.textContent='画像を読み込み中…';
@@ -1566,7 +1598,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     const tasks=[];
     if(data?.photo_path)tasks.push((async()=>{
       const transform={width:landscape?1200:900,height:landscape?800:1400,quality:76,resize:'contain'};
-      const url=await signedImageUrl(data.photo_path,transform);
+      const url=await signedImageUrl(data.photo_thumb_path||data.photo_path);
       if(url){const img=document.createElement('img');img.className=landscape?'photoImageLandscape':'photoImagePortrait';img.alt='コーデ写真';img.loading='lazy';img.decoding='async';img.fetchPriority='low';img.src=url;photoStage.replaceChildren(img);}
     })());
     if(data?.qr_path)tasks.push((async()=>{
@@ -1696,7 +1728,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const edit=document.createElement('button');edit.className='secondary';edit.textContent='編集';edit.addEventListener('click',()=>beginEditCard(card));
       const del=document.createElement('button');del.className='danger';del.textContent='削除';del.addEventListener('click',()=>runSafely(async()=>{
         if(!confirm('「'+card.card_name+'」を削除しますか？'))return;
-        const paths=[d.photo_path,d.qr_path].filter(Boolean);if(paths.length){const {error}=await client.storage.from(BUCKET).remove(paths);if(error)console.warn(error.message);}
+        const paths=[d.photo_path,d.photo_thumb_path,d.qr_path].filter(Boolean);if(paths.length){const {error}=await client.storage.from(BUCKET).remove(paths);if(error)console.warn(error.message);}
         const {error}=await client.from('cards').delete().eq('id',card.id).eq('user_id',currentUser.id);if(error)throw error;
         if(editingCardId===card.id)resetCardForm();message('cardRegisterStatus','フレカを削除しました。');scheduleCloudBackup();await loadCards();
       }));
@@ -1745,9 +1777,9 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       :`「${character.character_name}」を削除します。\n関連するフレカ${cardCount}件は残し、マイキャラとの紐づけを解除します。よろしいですか？`;
     if(!confirm(finalMessage))return;
     statusEl.textContent='削除しています…';
-    const cardPaths=relatedCards.flatMap(card=>[card.card_data?.photo_path,card.card_data?.qr_path]).filter(Boolean);
+    const cardPaths=relatedCards.flatMap(card=>[card.card_data?.photo_path,card.card_data?.photo_thumb_path,card.card_data?.qr_path]).filter(Boolean);
     const d=character.character_data||{};
-    const characterPaths=[d.main_image_path,d.image_path,d.image_url,d.photo_url,d.illustration_url,...(Array.isArray(d.appearance_photos)?d.appearance_photos.map(x=>x?.path):[])].filter(x=>typeof x==='string'&&!/^https?:\/\//i.test(x));
+    const characterPaths=[d.main_image_path,d.main_image_thumb_path,d.image_path,d.image_url,d.photo_url,d.illustration_url,...(Array.isArray(d.appearance_photos)?d.appearance_photos.flatMap(x=>[x?.path,x?.thumb_path]):[])].filter(x=>typeof x==='string'&&!/^https?:\/\//i.test(x));
     if(mode==='with-cards'){
       if(cardCount){
         const {error}=await client.from('cards').delete().eq('user_id',currentUser.id).eq('character_id',characterId);
@@ -1822,7 +1854,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
       const title=document.createElement('h3');title.className='myCharacterTitle';title.textContent=c.character_name;title.style.cssText='margin:4px 0 8px;color:'+theme+';overflow-wrap:anywhere;font-weight:900';card.appendChild(title);
       const imgBox=document.createElement('div');imgBox.className='myCharacterImageBox';imgBox.style.cssText='display:flex;align-items:center;justify-content:center;width:100%;height:clamp(120px,32vw,210px);margin:0 auto 12px;border-radius:14px;background:var(--soft);overflow:hidden';
       const img=document.createElement('img');img.alt=c.character_name;img.loading='lazy';img.style.cssText='width:100%;height:100%;object-fit:contain';
-      const mainPath=d.main_image_path||d.image_path||d.image_url||d.image||d.photo_url||d.illustration_url;
+      const mainPath=d.main_image_thumb_path||d.main_image_path||d.image_path||d.image_url||d.image||d.photo_url||d.illustration_url;
       if(mainPath){(async()=>{const url=String(mainPath).startsWith('http')?mainPath:await signedImageUrl(mainPath);if(url){img.src=url;imgBox.replaceChildren(img);}else imgBox.textContent='イメージ画像準備中';})();}
       else imgBox.textContent='イメージ画像準備中';
       imgBox.style.cursor='pointer';imgBox.setAttribute('role','button');imgBox.setAttribute('aria-label',c.character_name+'の図鑑詳細を表示');imgBox.addEventListener('click',()=>renderCharacterDetail(c));
@@ -1877,7 +1909,7 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
         const frame=document.createElement('div');frame.style.cssText='width:100%;aspect-ratio:1/1;display:grid;place-items:center;overflow:hidden;border-radius:13px;background:'+color+'18';
         const label=document.createElement('div');label.textContent=photo.name||'スタイル';label.style.cssText='margin:7px 0 1px;color:'+darkColor+';font-size:clamp(11px,3vw,14px);font-weight:900;overflow-wrap:anywhere';
         item.append(frame,label);grid.appendChild(item);
-        if(photo.path)runSafely(async()=>{const url=String(photo.path).startsWith('http')?photo.path:await signedImageUrl(photo.path,{width:600,height:600,quality:74,resize:'contain'});if(url){const img=document.createElement('img');img.src=url;img.alt=(photo.name||'スタイル')+'の写真';img.loading='lazy';img.decoding='async';img.fetchPriority='low';img.style.cssText='width:100%;height:100%;object-fit:cover';frame.replaceChildren(img);}else frame.textContent='写真を読み込めません';});else frame.textContent='登録画像';
+        if(photo.path)runSafely(async()=>{const displayPath=photo.thumb_path||photo.path;const url=String(displayPath).startsWith('http')?displayPath:await signedImageUrl(displayPath);if(url){const img=document.createElement('img');img.src=url;img.alt=(photo.name||'スタイル')+'の写真';img.loading='lazy';img.decoding='async';img.fetchPriority='low';img.style.cssText='width:100%;height:100%;object-fit:cover';frame.replaceChildren(img);}else frame.textContent='写真を読み込めません';});else frame.textContent='登録画像';
       });
       styles.appendChild(grid);content.appendChild(styles);
     }
@@ -1954,13 +1986,13 @@ input, select, textarea, button[contenteditable="true"], [contenteditable="true"
     deleteArea.append(deleteHeading,deleteHint,deleteButton);form.appendChild(deleteArea);
     form.addEventListener('submit',e=>{e.preventDefault();runSafely(async()=>{
       if(!name.value.trim()){status.textContent='マイキャラ名を入力してください。';return;}
-      const upload=async(file,type)=>{if(!file)return null;if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024)throw new Error('画像はJPEG・PNG・WebP、10MB以下にしてください。');const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[file.type];const path=`${currentUser.id}/${character.id}/character-${type}-${Date.now()}.${ext}`;const {error}=await client.storage.from(BUCKET).upload(path,file,{upsert:true,contentType:file.type});if(error)throw new Error('画像アップロード失敗：'+error.message);return path;};
+      const upload=async(file,type)=>{if(!file)return null;if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024)throw new Error('画像はJPEG・PNG・WebP、10MB以下にしてください。');const ext=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[file.type];const path=`${currentUser.id}/${character.id}/character-${type}-${Date.now()}.${ext}`;return uploadImageAndThumbnail(path,file,360);};
       save.disabled=true;status.textContent='保存しています…';
-      const mainPath=await upload(mainFile.files[0],'cover');
+      const mainUpload=await upload(mainFile.files[0],'cover');
       const nextPhotos=[];
-      for(const row of typesList.children){const type=row.dataset.appearance,old=photos.find(x=>x.name===type),newPath=await upload(row._file?.files?.[0],`appearance-${types.indexOf(type)}`);nextPhotos.push({name:type,path:newPath||old?.path||null});}
+      for(const row of typesList.children){const type=row.dataset.appearance,old=photos.find(x=>x.name===type),newUpload=await upload(row._file?.files?.[0],`appearance-${types.indexOf(type)}`);nextPhotos.push({name:type,path:newUpload?.path||old?.path||null,thumb_path:newUpload?newUpload.thumbPath:(old?.thumb_path||null)});}
       const next={...data,intro:intro.value.trim(),memo:memo.value.trim(),appearance_types:types,appearance_photos:nextPhotos,is_public:pub.checked,sheet_color:themeColor.value,sheet_style:styleSelect.value,birthday:birthday.value.trim(),motif:motif.value.trim()};
-      if(mainPath)next.main_image_path=mainPath;
+      if(mainUpload){next.main_image_path=mainUpload.path;if(mainUpload.thumbPath)next.main_image_thumb_path=mainUpload.thumbPath;}
       const {error}=await client.from('my_characters').update({character_name:name.value.trim(),character_data:next}).eq('id',character.id).eq('user_id',currentUser.id);if(error)throw error;
       await loadCharacters();
     }).catch(err=>{status.textContent=err.message||String(err);save.disabled=false;});});
